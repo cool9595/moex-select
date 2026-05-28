@@ -17,6 +17,9 @@ public record Instrument(
     String creditRating,
     String maturityDate,
     String board,
+    Double marketCap,
+    String optionType,
+    Double strikePrice,
     Map<String, Object> raw
 ) {
 }

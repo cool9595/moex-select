@@ -1,4 +1,4 @@
-import type { Recommendation } from '../types';
+import type { AssetClass, DisplayLevel, Instrument, Recommendation } from '../types';
 
 const assetClassLabels = {
   STOCK: 'Акция',
@@ -20,7 +20,8 @@ const liquidityLabels = {
 };
 
 interface InstrumentCardProps {
-  instrument: Recommendation;
+  instrument: Recommendation | Instrument;
+  variant?: 'recommendation' | 'search';
 }
 
 function formatMaturityDate(value: string | null | undefined) {
@@ -32,12 +33,64 @@ function formatMaturityDate(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString('ru-RU');
 }
 
-export function InstrumentCard({ instrument }: InstrumentCardProps) {
-  const price =
-    instrument.price == null
-      ? 'Нет данных'
-      : `${instrument.price.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ${instrument.currency ?? ''}`.trim();
+function formatNumber(value: number | null | undefined, suffix = '') {
+  if (value == null) {
+    return '—';
+  }
+  return `${value.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}${suffix}`.trim();
+}
+
+function impliedRisk(assetClass: AssetClass): DisplayLevel {
+  if (assetClass === 'BOND') {
+    return 'LOW';
+  }
+  return assetClass === 'STOCK' ? 'MEDIUM' : 'HIGH';
+}
+
+function liquidityLevel(instrument: Recommendation | Instrument): DisplayLevel {
+  if ('liquidityLevel' in instrument) {
+    return instrument.liquidityLevel;
+  }
+  const turnover = instrument.turnover ?? 0;
+  const volume = instrument.volume ?? 0;
+  if (turnover > 1_000_000_000 || volume > 1_000_000) {
+    return 'HIGH';
+  }
+  if (turnover > 10_000_000 || volume > 50_000) {
+    return 'MEDIUM';
+  }
+  return 'LOW';
+}
+
+function explanations(instrument: Recommendation | Instrument, variant: InstrumentCardProps['variant']) {
+  if ('explanation' in instrument) {
+    return instrument.explanation;
+  }
+  const result = [
+    'Инструмент найден по открытым данным MOEX ISS.',
+    `Класс инструмента: ${assetClassLabels[instrument.assetClass].toLowerCase()}.`,
+  ];
+  if (variant === 'search') {
+    result.push('Параметры карточки приведены к единому виду для сравнения.');
+  }
+  return result;
+}
+
+function warnings(instrument: Recommendation | Instrument) {
+  if ('warnings' in instrument) {
+    return instrument.warnings;
+  }
+  return instrument.assetClass === 'FUTURE' || instrument.assetClass === 'OPTION'
+    ? ['Инструмент относится к сложным финансовым инструментам и подходит только пользователям с соответствующим опытом.']
+    : [];
+}
+
+export function InstrumentCard({ instrument, variant = 'recommendation' }: InstrumentCardProps) {
+  const price = `${formatNumber(instrument.price)} ${instrument.currency ?? ''}`.trim();
   const maturity = formatMaturityDate(instrument.maturityDate);
+  const riskLevel = 'riskLevel' in instrument ? instrument.riskLevel : impliedRisk(instrument.assetClass);
+  const liquidity = liquidityLevel(instrument);
+  const profileMatch = 'profileMatch' in instrument ? instrument.profileMatch : false;
 
   return (
     <article className="instrument-card">
@@ -52,9 +105,9 @@ export function InstrumentCard({ instrument }: InstrumentCardProps) {
       </div>
 
       <div className="badge-row">
-        <span className={`detail-badge risk-${instrument.riskLevel.toLowerCase()}`}>Риск: {riskLabels[instrument.riskLevel]}</span>
-        <span className="detail-badge">Ликвидность: {liquidityLabels[instrument.liquidityLevel]}</span>
-        {instrument.profileMatch && <span className="fit-badge">Подходит под профиль</span>}
+        <span className={`detail-badge risk-${riskLevel.toLowerCase()}`}>Риск: {riskLabels[riskLevel]}</span>
+        <span className="detail-badge">Ликвидность: {liquidityLabels[liquidity]}</span>
+        {profileMatch && <span className="fit-badge">Подходит под профиль</span>}
       </div>
 
       <dl className="facts-grid">
@@ -62,29 +115,49 @@ export function InstrumentCard({ instrument }: InstrumentCardProps) {
           <dt>Цена</dt>
           <dd>{price}</dd>
         </div>
-        {instrument.yieldValue != null && (
+        <div>
+          <dt>Расчетная доходность</dt>
+          <dd>{formatNumber(instrument.yieldValue, '%')}</dd>
+        </div>
+        <div>
+          <dt>Объем</dt>
+          <dd>{formatNumber('volume' in instrument ? instrument.volume : null)}</dd>
+        </div>
+        <div>
+          <dt>Оборот</dt>
+          <dd>{formatNumber('turnover' in instrument ? instrument.turnover : null)}</dd>
+        </div>
+        <div>
+          <dt>Волатильность</dt>
+          <dd>{formatNumber('volatility' in instrument ? instrument.volatility : null, '%')}</dd>
+        </div>
+        <div>
+          <dt>Погашение</dt>
+          <dd>{maturity ?? '—'}</dd>
+        </div>
+        {'marketCap' in instrument && (
           <div>
-            <dt>Расчетная доходность</dt>
-            <dd>{instrument.yieldValue.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}%</dd>
+            <dt>Капитализация</dt>
+            <dd>{formatNumber(instrument.marketCap)}</dd>
           </div>
         )}
-        {maturity && (
+        {'strikePrice' in instrument && (
           <div>
-            <dt>Погашение</dt>
-            <dd>{maturity}</dd>
+            <dt>Strike price</dt>
+            <dd>{formatNumber(instrument.strikePrice)}</dd>
           </div>
         )}
       </dl>
 
       <ul className="explain-list">
-        {instrument.explanation.map((item) => (
+        {explanations(instrument, variant).map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
 
-      {instrument.warnings.length > 0 && (
+      {warnings(instrument).length > 0 && (
         <div className="warning-list">
-          {instrument.warnings.map((warning) => (
+          {warnings(instrument).map((warning) => (
             <p key={warning}>{warning}</p>
           ))}
         </div>

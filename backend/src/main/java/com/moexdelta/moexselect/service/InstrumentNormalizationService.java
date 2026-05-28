@@ -39,6 +39,9 @@ public class InstrumentNormalizationService {
             upper(firstString(row, "CREDITRATING", "RATING", "RATINGGROUP")),
             normalizeMaturityDate(firstString(row, "MATDATE", "MATURITYDATE", "MATUREDATE")),
             firstString(row, "BOARDID"),
+            firstDouble(row, "ISSUECAPITALIZATION", "MARKETCAP", "MARKETCAPITALIZATION"),
+            upper(firstString(row, "OPTIONTYPE", "OPTIONTYPEID", "OPTION_TYPE")),
+            firstDouble(row, "STRIKE", "STRIKEPRICE", "STRIKE_PRICE"),
             row
         );
     }

@@ -1,42 +1,71 @@
 import { useEffect, useState } from 'react';
-import { getRecommendations } from './api';
+import { getRecommendations, searchInstruments } from './api';
+import { AdvancedSearchForm } from './components/AdvancedSearchForm';
 import { HowItWorks } from './components/HowItWorks';
 import { ProfileForm } from './components/ProfileForm';
 import { ResultsList } from './components/ResultsList';
-import type { Recommendation, RecommendationRequest } from './types';
+import { SearchResultsList } from './components/SearchResultsList';
+import type { InstrumentSearchParams, InstrumentSearchResponse, Recommendation, RecommendationRequest } from './types';
 
 const initialProfile: RecommendationRequest = {
   goal: 'CAPITAL_GROWTH',
   riskProfile: 'MEDIUM',
   horizon: 'LONG',
   budget: 100000,
-  experience: 'BEGINNER',
   assetClasses: ['STOCK', 'BOND'],
   limit: 10,
 };
 
+const initialSearch: InstrumentSearchParams = {
+  query: '',
+  assetClass: '',
+  page: 0,
+  limit: 6,
+  sortBy: 'ticker',
+  sortDirection: 'asc',
+};
+
 function App() {
+  const [mode, setMode] = useState<'beginner' | 'advanced'>('advanced');
   const [profile, setProfile] = useState<RecommendationRequest>(initialProfile);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useState<InstrumentSearchParams>(initialSearch);
+  const [searchResponse, setSearchResponse] = useState<InstrumentSearchResponse | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const submit = async () => {
-    setLoading(true);
-    setError(null);
+    setRecommendationLoading(true);
+    setRecommendationError(null);
 
     try {
       const response = await getRecommendations(profile);
       setRecommendations(response.recommendations);
     } catch (apiError) {
-      setError(apiError instanceof Error ? apiError.message : 'Не удалось загрузить инструменты');
+      setRecommendationError(apiError instanceof Error ? apiError.message : 'Не удалось загрузить инструменты');
     } finally {
-      setLoading(false);
+      setRecommendationLoading(false);
+    }
+  };
+
+  const runSearch = async (params = searchParams) => {
+    setSearchLoading(true);
+    setSearchError(null);
+
+    try {
+      const response = await searchInstruments(params);
+      setSearchResponse(response);
+    } catch (apiError) {
+      setSearchError(apiError instanceof Error ? apiError.message : 'Не удалось выполнить поиск');
+    } finally {
+      setSearchLoading(false);
     }
   };
 
   useEffect(() => {
-    void submit();
+    void runSearch(initialSearch);
   }, []);
 
   return (
@@ -55,13 +84,56 @@ function App() {
         </p>
       </section>
 
+      <section className="mode-switcher" aria-label="Режим работы">
+        <div>
+          <h2>Режим работы</h2>
+          <p>Переключайтесь между простой анкетой и расширенным поиском по инструментам</p>
+        </div>
+        <div className="segmented">
+          <button className={mode === 'beginner' ? 'active' : ''} type="button" onClick={() => setMode('beginner')}>
+            Новичок
+          </button>
+          <button className={mode === 'advanced' ? 'active' : ''} type="button" onClick={() => setMode('advanced')}>
+            Опытный
+          </button>
+        </div>
+      </section>
+
       <div className="layout">
         <aside className="sidebar">
-          <ProfileForm value={profile} loading={loading} onChange={setProfile} onSubmit={submit} />
-          <HowItWorks />
+          {mode === 'beginner' ? (
+            <>
+              <ProfileForm value={profile} loading={recommendationLoading} onChange={setProfile} onSubmit={submit} />
+              <HowItWorks />
+            </>
+          ) : (
+            <AdvancedSearchForm
+              value={searchParams}
+              loading={searchLoading}
+              onChange={setSearchParams}
+              onSubmit={() => {
+                const nextParams = { ...searchParams, page: 0 };
+                setSearchParams(nextParams);
+                void runSearch(nextParams);
+              }}
+            />
+          )}
         </aside>
 
-        <ResultsList recommendations={recommendations} loading={loading} error={error} />
+        {mode === 'beginner' ? (
+          <ResultsList recommendations={recommendations} loading={recommendationLoading} error={recommendationError} />
+        ) : (
+          <SearchResultsList
+            response={searchResponse}
+            loading={searchLoading}
+            error={searchError}
+            onPageChange={(page) => {
+              const nextParams = { ...searchParams, page };
+              setSearchParams(nextParams);
+              void runSearch(nextParams);
+            }}
+          />
+        )}
       </div>
     </main>
   );

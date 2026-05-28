@@ -19,12 +19,13 @@ public record RecommendationRequest(
     @NotNull RiskProfile riskProfile,
     @NotNull Horizon horizon,
     @DecimalMin("0.0") double budget,
-    @NotNull Experience experience,
+    Experience experience,
     @NotEmpty List<AssetClass> assetClasses,
     @Min(1) @Max(50) Integer limit
 ) {
     public RecommendationRequest {
         limit = limit == null ? 10 : limit;
+        experience = experience == null ? Experience.BEGINNER : experience;
         assetClasses = assetClasses == null ? List.of() : List.copyOf(assetClasses);
     }
 }

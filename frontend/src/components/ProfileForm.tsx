@@ -1,4 +1,4 @@
-import type { AssetClass, Experience, Goal, Horizon, RecommendationRequest, RiskProfile } from '../types';
+import type { AssetClass, Goal, Horizon, RecommendationRequest, RiskProfile } from '../types';
 
 interface ProfileFormProps {
   value: RecommendationRequest;
@@ -24,12 +24,6 @@ const horizons: Array<{ value: Horizon; label: string }> = [
   { value: 'SHORT', label: 'До 1 года' },
   { value: 'MEDIUM', label: '1-3 года' },
   { value: 'LONG', label: 'Более 3 лет' },
-];
-
-const experiences: Array<{ value: Experience; label: string }> = [
-  { value: 'BEGINNER', label: 'Новичок' },
-  { value: 'INTERMEDIATE', label: 'Уверенный пользователь' },
-  { value: 'ADVANCED', label: 'Продвинутый пользователь' },
 ];
 
 const assetClasses: Array<{ value: AssetClass; label: string }> = [
@@ -100,17 +94,6 @@ export function ProfileForm({ value, loading, onChange, onSubmit }: ProfileFormP
           value={value.budget}
           onChange={(event) => update('budget', Number(event.target.value))}
         />
-      </label>
-
-      <label className="field">
-        <span>Опыт</span>
-        <select value={value.experience} onChange={(event) => update('experience', event.target.value as Experience)}>
-          {experiences.map((experience) => (
-            <option key={experience.value} value={experience.value}>
-              {experience.label}
-            </option>
-          ))}
-        </select>
       </label>
 
       <div className="field">

@@ -56,4 +56,22 @@ class MoexIssClientTests {
         assertThat(instrument.volume()).isEqualTo(1500d);
         assertThat(instrument.turnover()).isEqualTo(480000d);
     }
+
+    @Test
+    void extractsAdvancedFieldsWhenIssProvidesThem() {
+        var normalizationService = new InstrumentNormalizationService();
+        var instrument = normalizationService.normalizeInstrument(
+            Map.of(
+                "SECID", "SBER-6.26-C320",
+                "ISSUECAPITALIZATION", 5_000_000_000d,
+                "OPTIONTYPE", "call",
+                "STRIKE", 320
+            ),
+            AssetClass.OPTION
+        );
+
+        assertThat(instrument.marketCap()).isEqualTo(5_000_000_000d);
+        assertThat(instrument.optionType()).isEqualTo("CALL");
+        assertThat(instrument.strikePrice()).isEqualTo(320d);
+    }
 }

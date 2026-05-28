@@ -17,7 +17,7 @@ API будет доступен на `http://localhost:8000`, Swagger UI - на 
 ## Endpoints
 
 - `GET /api/health` - состояние API.
-- `GET /api/instruments` - каталог с фильтрами `assetClass`, `query`, `limit`, `page`, `sortBy`.
+- `GET /api/instruments` - пагинированный каталог с `assetClass`, `query`, `limit`, `page`, `sortBy`, `sortDirection` и диапазонами цены, доходности, объема, оборота, волатильности, сроков погашения, капитализации, типа опциона и strike price.
 - `GET /api/instruments/{ticker}` - нормализованные сведения об инструменте.
 - `POST /api/recommendations` - публичная подборка без внутренних оценок.
 - `POST /api/recommendations?debug=true` - диагностический ответ с `internalScores`.

@@ -51,9 +51,28 @@ public final class ReserveInstrumentCatalog {
             case BOND -> "TQOB";
             case FUTURE, OPTION -> null;
         };
+        Double marketCap = switch (assetClass) {
+            case STOCK -> turnover * 1200;
+            default -> null;
+        };
+        String optionType = ticker.contains("-C") || name.toLowerCase().contains("call") ? "CALL"
+            : ticker.contains("-P") || name.toLowerCase().contains("put") ? "PUT" : null;
+        Double strikePrice = optionType == null ? null : extractStrike(ticker);
         return new Instrument(
             ticker, name, assetClass, price, currency, yieldValue, volume, turnover,
-            volatility, creditRating, maturityDate, board, RAW_FIELDS
+            volatility, creditRating, maturityDate, board, marketCap, optionType, strikePrice, RAW_FIELDS
         );
+    }
+
+    private static Double extractStrike(String ticker) {
+        var index = ticker.lastIndexOf('-');
+        if (index < 0 || index == ticker.length() - 1) {
+            return null;
+        }
+        try {
+            return Double.valueOf(ticker.substring(index + 1).replaceAll("[^0-9.]", ""));
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 }

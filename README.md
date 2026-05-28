@@ -101,9 +101,9 @@ npm run dev
 }
 ```
 
-`GET /api/instruments?assetClass=STOCK&query=sber&limit=20&page=0&sortBy=ticker`
+`GET /api/instruments?assetClass=STOCK&query=sber&limit=6&page=0&sortBy=turnover&sortDirection=desc`
 
-Возвращает нормализованный каталог инструментов. Дополнительный запрос `GET /api/instruments/{ticker}` возвращает один инструмент.
+Возвращает пагинированный каталог инструментов с частичным поиском по тикеру/названию, сортировкой и расширенными фильтрами. Поддерживаются `page`, `limit`, `sortBy`, `sortDirection`, диапазоны цены, доходности, объема, оборота, волатильности, сроков погашения, капитализации, типа опциона и strike price. Дополнительный запрос `GET /api/instruments/{ticker}` возвращает один инструмент.
 
 `POST /api/recommendations`
 

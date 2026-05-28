@@ -67,6 +67,9 @@ flowchart LR
 | `currency` | `CURRENCYID`, `FACEUNIT`, `CURRENCY` |
 | `maturityDate` | `MATDATE`, `MATURITYDATE`, `MATUREDATE` |
 | `board` | `BOARDID` |
+| `marketCap` | `ISSUECAPITALIZATION`, `MARKETCAP`, `MARKETCAPITALIZATION` |
+| `optionType` | `OPTIONTYPE`, `OPTIONTYPEID`, `OPTION_TYPE` |
+| `strikePrice` | `STRIKE`, `STRIKEPRICE`, `STRIKE_PRICE` |
 
 При наличии дневных полей `VOLTODAY` и `VALTODAY` они имеют приоритет перед значениями отдельной сделки, поскольку ликвидность оценивается по торговому дню. Если поле отсутствует, в модели остается `null`. Невалидные даты погашения и аномальные значения доходности не используются в карточке или ранжировании.
 

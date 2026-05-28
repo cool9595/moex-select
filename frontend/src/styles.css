@@ -96,6 +96,66 @@ select {
   align-items: start;
 }
 
+.mode-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0 0 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.mode-switcher h2 {
+  margin: 0;
+  color: #1c242c;
+  font-size: 1.1rem;
+}
+
+.mode-switcher p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f6f7f8;
+}
+
+.segmented button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 14px;
+  color: #4d5967;
+  background: transparent;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.segmented.small {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.segmented.small button {
+  flex: 1;
+  padding: 0 8px;
+  font-size: 0.82rem;
+}
+
 .sidebar {
   display: grid;
   gap: 16px;
@@ -152,6 +212,31 @@ select {
   color: var(--text);
   background: #ffffff;
   outline: none;
+}
+
+.field.compact {
+  margin-top: 0;
+}
+
+.form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.form-grid.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.filter-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.filter-section > span {
+  color: #2c3643;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .field input:focus,
@@ -375,8 +460,8 @@ select {
 
 .facts-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(125px, 1fr));
-  gap: 0;
+  grid-template-columns: repeat(4, minmax(125px, 1fr));
+  gap: 12px 0;
   margin: 0 0 18px;
   padding: 14px 0;
   border-top: 1px solid #edf0f3;
@@ -450,6 +535,41 @@ select {
   background: var(--accent);
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 0 2px;
+}
+
+.pagination button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0 16px;
+  color: #293340;
+  background: #ffffff;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.pagination button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pagination button:disabled {
+  color: #9aa3ad;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
 .status-box {
   padding: 42px 28px;
   color: #53606e;
@@ -475,6 +595,19 @@ select {
 
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .mode-switcher {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .segmented {
+    width: 100%;
+  }
+
+  .segmented button {
+    flex: 1;
   }
 }
 
@@ -511,6 +644,10 @@ select {
   }
 
   .checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid.two-columns {
     grid-template-columns: 1fr;
   }
 

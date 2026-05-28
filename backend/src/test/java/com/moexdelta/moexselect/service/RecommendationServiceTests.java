@@ -65,7 +65,8 @@ class RecommendationServiceTests {
     void explainsMatchingBondHorizon() {
         var longBond = new Instrument(
             "LONG", "Длинная облигация", AssetClass.BOND, 100d, "RUB", 14d,
-            100_000d, 10_000_000d, 8d, "AAA", LocalDate.now().plusYears(5).toString(), "TQOB", Map.of()
+            100_000d, 10_000_000d, 8d, "AAA", LocalDate.now().plusYears(5).toString(), "TQOB",
+            null, null, null, Map.of()
         );
         var request = new RecommendationRequest(
             Goal.CAPITAL_PRESERVATION,

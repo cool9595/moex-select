@@ -1,4 +1,4 @@
-import type { RecommendationRequest, RecommendationResponse } from './types';
+import type { InstrumentSearchParams, InstrumentSearchResponse, RecommendationRequest, RecommendationResponse } from './types';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
@@ -23,4 +23,14 @@ export function getRecommendations(payload: RecommendationRequest): Promise<Reco
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function searchInstruments(params: InstrumentSearchParams): Promise<InstrumentSearchResponse> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  });
+  return requestJson<InstrumentSearchResponse>(`/instruments?${query.toString()}`);
 }

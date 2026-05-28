@@ -1,5 +1,7 @@
 package com.moexdelta.moexselect.dto;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import com.moexdelta.moexselect.enums.AssetClass;
@@ -18,6 +20,10 @@ public record InstrumentDto(
     String creditRating,
     String maturityDate,
     String board,
+    Double marketCap,
+    String optionType,
+    Double strikePrice,
+    String moexUrl,
     Map<String, Object> raw
 ) {
     public static InstrumentDto fromInstrument(Instrument instrument) {
@@ -34,7 +40,23 @@ public record InstrumentDto(
             instrument.creditRating(),
             instrument.maturityDate(),
             instrument.board(),
+            instrument.marketCap(),
+            instrument.optionType(),
+            instrument.strikePrice(),
+            moexUrl(instrument),
             instrument.raw()
         );
+    }
+
+    private static String moexUrl(Instrument instrument) {
+        var ticker = encoded(instrument.ticker());
+        if (instrument.board() != null && !instrument.board().isBlank()) {
+            return "https://www.moex.com/ru/issue.aspx?board=" + encoded(instrument.board()) + "&code=" + ticker;
+        }
+        return "https://www.moex.com/ru/issue.aspx?code=" + ticker;
+    }
+
+    private static String encoded(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }
