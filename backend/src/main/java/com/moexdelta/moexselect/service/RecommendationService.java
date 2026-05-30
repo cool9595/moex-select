@@ -5,14 +5,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.moexdelta.moexselect.dto.PublicInstrumentRecommendation;
 import com.moexdelta.moexselect.dto.RecommendationRequest;
 import com.moexdelta.moexselect.dto.RecommendationResponse;
+import com.moexdelta.moexselect.dto.InternalScores;
 import com.moexdelta.moexselect.enums.AssetClass;
 import com.moexdelta.moexselect.enums.Experience;
 import com.moexdelta.moexselect.enums.Goal;
+import com.moexdelta.moexselect.enums.InvestmentScenario;
 import com.moexdelta.moexselect.enums.RiskProfile;
 import com.moexdelta.moexselect.enums.UserProfileType;
 import com.moexdelta.moexselect.model.Instrument;
@@ -27,17 +30,20 @@ public class RecommendationService {
     private final ExplanationService explanationService;
     private final ExplanationGenerationService explanationGenerationService;
     private final ScenarioDetectionService scenarioDetectionService;
+    private final int llmMaxSummaries;
 
     public RecommendationService(
         ScoringService scoringService,
         ExplanationService explanationService,
         ExplanationGenerationService explanationGenerationService,
-        ScenarioDetectionService scenarioDetectionService
+        ScenarioDetectionService scenarioDetectionService,
+        @Value("${LLM_MAX_SUMMARIES:1}") int llmMaxSummaries
     ) {
         this.scoringService = scoringService;
         this.explanationService = explanationService;
         this.explanationGenerationService = explanationGenerationService;
         this.scenarioDetectionService = scenarioDetectionService;
+        this.llmMaxSummaries = Math.max(0, llmMaxSummaries);
     }
 
     public RecommendationResponse recommend(
@@ -50,10 +56,17 @@ public class RecommendationService {
         var recommendations = instruments.stream()
             .filter(instrument -> request.assetClasses().contains(instrument.assetClass()))
             .filter(instrument -> shouldKeepInstrument(instrument, request))
-            .map(instrument -> rankInstrument(instrument, request, profile, scenario, debug))
-            .sorted(Comparator.comparingDouble(RankedInstrument::rank).reversed())
+            .map(instrument -> rankInstrument(instrument, request, profile, scenario))
+            .sorted(Comparator.comparingDouble(RankedCandidate::rank).reversed())
             .limit(request.limit())
-            .map(RankedInstrument::recommendation)
+            .map(new java.util.function.Function<RankedCandidate, PublicInstrumentRecommendation>() {
+                private int index;
+
+                @Override
+                public PublicInstrumentRecommendation apply(RankedCandidate candidate) {
+                    return toRecommendation(candidate, request, scenario, debug, index++ < llmMaxSummaries);
+                }
+            })
             .toList();
         return new RecommendationResponse(profile, DISCLAIMER, recommendations);
     }
@@ -75,14 +88,25 @@ public class RecommendationService {
         return UserProfileType.BALANCED;
     }
 
-    private RankedInstrument rankInstrument(
+    private RankedCandidate rankInstrument(
         Instrument instrument,
         RecommendationRequest request,
         UserProfileType profile,
-        com.moexdelta.moexselect.enums.InvestmentScenario scenario,
-        boolean debug
+        InvestmentScenario scenario
     ) {
         var scores = scoringService.calculate(instrument, request, profile, scenario);
+        return new RankedCandidate(instrument, scores, scores.finalScore());
+    }
+
+    private PublicInstrumentRecommendation toRecommendation(
+        RankedCandidate candidate,
+        RecommendationRequest request,
+        InvestmentScenario scenario,
+        boolean debug,
+        boolean allowLlm
+    ) {
+        var instrument = candidate.instrument();
+        var scores = candidate.scores();
         var confidenceLevel = scoringService.confidenceLevel(instrument);
         var reasonCodes = explanationService.reasonCodes(instrument, request, scores, scenario, confidenceLevel);
         var warnings = explanationService.warnings(instrument);
@@ -94,7 +118,8 @@ public class RecommendationService {
             confidenceLevel,
             reasonCodes,
             warnings,
-            scores
+            scores,
+            allowLlm
         );
         var publicRecommendation = new PublicInstrumentRecommendation(
             instrument.ticker(),
@@ -115,7 +140,7 @@ public class RecommendationService {
             moexUrl(instrument),
             debug ? scores : null
         );
-        return new RankedInstrument(publicRecommendation, scores.finalScore());
+        return publicRecommendation;
     }
 
     private boolean shouldKeepInstrument(Instrument instrument, RecommendationRequest request) {
@@ -141,6 +166,6 @@ public class RecommendationService {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    private record RankedInstrument(PublicInstrumentRecommendation recommendation, double rank) {
+    private record RankedCandidate(Instrument instrument, InternalScores scores, double rank) {
     }
 }

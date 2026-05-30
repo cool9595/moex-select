@@ -80,7 +80,7 @@ function App() {
       <RippleGridBackground />
       <header className="site-header">
         <div className="product-mark">MOEX Select</div>
-        <div className="header-note">Delta team | Данные рынка: MOEX ISS</div>
+        <div className="header-note">Delta team</div>
       </header>
 
       <section className="hero">
@@ -88,7 +88,7 @@ function App() {
         <p>Найдите инструменты Московской Биржи под ваши цели, риск-профиль и горизонт инвестирования</p>
         <p className="disclaimer">
           Информация не является индивидуальной инвестиционной рекомендацией. Подбор основан на выбранных пользователем
-          параметрах и открытых рыночных данных MOEX ISS.
+          параметрах и открытых рыночных данных.
         </p>
       </section>
 

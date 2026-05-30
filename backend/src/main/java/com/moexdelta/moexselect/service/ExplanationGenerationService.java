@@ -27,7 +27,10 @@ public class ExplanationGenerationService {
         "точно вырастет",
         "лучший инструмент",
         "советуем купить",
-        "инвестиционная рекомендация"
+        "инвестиционная рекомендация",
+        "покуп",
+        "продаж",
+        "совет"
     );
 
     private final WebClient.Builder webClientBuilder;
@@ -36,14 +39,16 @@ public class ExplanationGenerationService {
     private final String llmProvider;
     private final String llmModel;
     private final String llmBaseUrl;
+    private final int llmTimeoutSeconds;
 
     public ExplanationGenerationService(
         WebClient.Builder webClientBuilder,
         ExplanationService explanationService,
         @Value("${LLM_EXPLANATIONS_ENABLED:false}") boolean llmEnabled,
         @Value("${LLM_PROVIDER:ollama}") String llmProvider,
-        @Value("${LLM_MODEL:llama3.1:8b}") String llmModel,
-        @Value("${LLM_BASE_URL:http://localhost:11434}") String llmBaseUrl
+        @Value("${LLM_MODEL:qwen2.5:3b-instruct}") String llmModel,
+        @Value("${LLM_BASE_URL:http://localhost:11434}") String llmBaseUrl,
+        @Value("${LLM_TIMEOUT_SECONDS:12}") int llmTimeoutSeconds
     ) {
         this.webClientBuilder = webClientBuilder;
         this.explanationService = explanationService;
@@ -51,6 +56,7 @@ public class ExplanationGenerationService {
         this.llmProvider = llmProvider;
         this.llmModel = llmModel;
         this.llmBaseUrl = llmBaseUrl;
+        this.llmTimeoutSeconds = Math.max(1, llmTimeoutSeconds);
     }
 
     public String generateSummary(
@@ -60,44 +66,47 @@ public class ExplanationGenerationService {
         ConfidenceLevel confidenceLevel,
         List<ReasonCode> reasonCodes,
         List<String> warnings,
-        InternalScores scores
+        InternalScores scores,
+        boolean allowLlm
     ) {
-        if (llmEnabled) {
+        if (llmEnabled && allowLlm) {
             var llmSummary = switch (llmProvider.toLowerCase(Locale.ROOT)) {
-                case "mock" -> mockSummary(instrument, scenario, reasonCodes, confidenceLevel);
-                case "ollama" -> ollamaSummary(instrument, request, scenario, confidenceLevel, reasonCodes, warnings, scores);
+                case "mock" -> mockSummary(instrument, scenario, reasonCodes);
+                case "ollama" -> ollamaSummary(instrument, request, scenario, reasonCodes, warnings, scores);
                 default -> null;
             };
+            llmSummary = sanitize(llmSummary);
             if (isSafe(llmSummary)) {
-                return llmSummary.strip();
+                return trimToLimit(llmSummary.strip());
             }
         }
-        return templateSummary(instrument, scenario, confidenceLevel, reasonCodes);
+        return templateSummary(instrument, scenario, reasonCodes);
     }
 
     private String ollamaSummary(
         Instrument instrument,
         RecommendationRequest request,
         InvestmentScenario scenario,
-        ConfidenceLevel confidenceLevel,
         List<ReasonCode> reasonCodes,
         List<String> warnings,
         InternalScores scores
     ) {
         try {
-            var client = webClientBuilder
-                .baseUrl(llmBaseUrl)
-                .build();
+            var client = webClientBuilder.baseUrl(llmBaseUrl).build();
             var response = client.post()
                 .uri("/api/generate")
                 .bodyValue(Map.of(
                     "model", llmModel,
-                    "prompt", systemPrompt() + "\n\n" + userPrompt(instrument, request, scenario, confidenceLevel, reasonCodes, warnings, scores),
-                    "stream", false
+                    "prompt", prompt(instrument, request, scenario, reasonCodes, warnings, scores),
+                    "stream", false,
+                    "options", Map.of(
+                        "temperature", 0.15,
+                        "num_predict", 45
+                    )
                 ))
                 .retrieve()
                 .bodyToMono(OllamaGenerateResponse.class)
-                .timeout(Duration.ofSeconds(3))
+                .timeout(Duration.ofSeconds(llmTimeoutSeconds))
                 .block();
             return response == null ? null : response.response();
         } catch (RuntimeException exception) {
@@ -108,16 +117,14 @@ public class ExplanationGenerationService {
     private String mockSummary(
         Instrument instrument,
         InvestmentScenario scenario,
-        List<ReasonCode> reasonCodes,
-        ConfidenceLevel confidenceLevel
+        List<ReasonCode> reasonCodes
     ) {
-        return templateSummary(instrument, scenario, confidenceLevel, reasonCodes);
+        return templateSummary(instrument, scenario, reasonCodes);
     }
 
     private String templateSummary(
         Instrument instrument,
         InvestmentScenario scenario,
-        ConfidenceLevel confidenceLevel,
         List<ReasonCode> reasonCodes
     ) {
         var reasons = reasonCodes.stream()
@@ -127,76 +134,42 @@ public class ExplanationGenerationService {
         var first = "Инструмент " + instrument.ticker() + " попал в подборку по сценарию "
             + scenarioLabel(scenario).toLowerCase(Locale.ROOT) + ".";
         var second = reasons.isEmpty()
-            ? "Ранжирование учитывает выбранные параметры пользователя и доступные данные MOEX ISS."
+            ? "Ранжирование учитывает выбранные параметры пользователя и доступные рыночные данные."
             : String.join(" ", reasons);
         return trimToLimit(first + " " + second);
     }
 
-    private String systemPrompt() {
-        return """
-            Ты генерируешь краткие объяснения для сервиса подбора финансовых инструментов MOEX Select.
-            Ты не даешь инвестиционных рекомендаций.
-            Ты не советуешь покупать или продавать.
-            Ты используешь только переданные данные.
-            Не выдумывай доходность, рейтинг, цену, риск или прогноз.
-            Пиши на русском языке.
-            Стиль: нейтральный, профессиональный, понятный частному инвестору.
-            Длина: 2-3 коротких предложения.
-            Запрещенные слова и фразы: купите, продавайте, гарантированно, точно вырастет, лучший инструмент, советуем купить.
-            """;
-    }
-
-    private String userPrompt(
+    private String prompt(
         Instrument instrument,
         RecommendationRequest request,
         InvestmentScenario scenario,
-        ConfidenceLevel confidenceLevel,
         List<ReasonCode> reasonCodes,
         List<String> warnings,
         InternalScores scores
     ) {
+        var reasons = reasonCodes.stream()
+            .limit(3)
+            .map(explanationService::textFor)
+            .toList();
         return """
-            Данные инструмента:
-            ticker: %s
-            name: %s
-            assetClass: %s
-            price: %s
-            currency: %s
-            yieldValue: %s
-            maturityDate: %s
+            Напиши одно короткое пояснение на русском для карточки MOEX Select.
+            Это не инвестиционная рекомендация. Не используй слова: купить, покупать, продать, продавать, совет.
+            Не обещай доходность и не делай прогнозов. Не раскрывай числовые score.
 
-            Параметры пользователя:
-            goal: %s
-            riskProfile: %s
-            horizon: %s
-            experience: %s
+            Инструмент: %s, %s, %s.
+            Сценарий: %s. Риск пользователя: %s. Горизонт: %s.
+            Причины: %s.
+            Предупреждения: %s.
 
-            Расчетный результат:
-            investmentScenario: %s
-            riskLevel: %s
-            liquidityLevel: %s
-            confidenceLevel: %s
-            reasonCodes: %s
-            warnings: %s
-
-            Сформулируй только объяснение карточки. Не меняй ранжирование и не добавляй новых фактов.
+            Ответь одним нейтральным предложением.
             """.formatted(
             instrument.ticker(),
             instrument.name(),
             instrument.assetClass(),
-            instrument.price(),
-            instrument.currency(),
-            instrument.yieldValue(),
-            instrument.maturityDate(),
-            request.goal(),
+            scenarioLabel(scenario),
             request.riskProfile(),
             request.horizon(),
-            request.experience(),
-            scenario,
-            scores.riskScore(),
-            scores.liquidityScore(),
-            confidenceLevel,
-            reasonCodes,
+            reasons,
             warnings
         );
     }
@@ -207,6 +180,15 @@ public class ExplanationGenerationService {
         }
         var normalized = value.toLowerCase(Locale.ROOT);
         return FORBIDDEN_PHRASES.stream().noneMatch(normalized::contains);
+    }
+
+    private String sanitize(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value
+            .replace("предлагает доходность", "имеет показатели доходности")
+            .replace("предлагает более привлекательную доходность", "имеет более привлекательные показатели доходности");
     }
 
     private String trimToLimit(String value) {

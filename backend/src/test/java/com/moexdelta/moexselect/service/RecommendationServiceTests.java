@@ -26,8 +26,9 @@ class RecommendationServiceTests {
     private final RecommendationService service = new RecommendationService(
         scoringService,
         explanationService,
-        new ExplanationGenerationService(WebClient.builder(), explanationService, false, "mock", "mock", "http://localhost:11434"),
-        new ScenarioDetectionService()
+        new ExplanationGenerationService(WebClient.builder(), explanationService, false, "mock", "mock", "http://localhost:11434", 1),
+        new ScenarioDetectionService(),
+        2
     );
 
     @Test

@@ -123,7 +123,7 @@ function explanations(instrument: Recommendation | Instrument, variant: Instrume
     return instrument.explanation;
   }
   const result = [
-    'Инструмент найден по открытым данным MOEX ISS.',
+    'Инструмент найден по открытым рыночным данным.',
     `Класс инструмента: ${assetClassLabels[instrument.assetClass].toLowerCase()}.`,
   ];
   if (variant === 'search') {

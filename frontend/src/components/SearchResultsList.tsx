@@ -12,7 +12,7 @@ export function SearchResultsList({ response, loading, error, onPageChange }: Se
   if (loading) {
     return (
       <section className="panel results-panel">
-        <div className="status-box">Загружаем инструменты MOEX ISS...</div>
+        <div className="status-box">Загружаем инструменты...</div>
       </section>
     );
   }

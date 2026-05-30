@@ -42,7 +42,7 @@ export function AdvancedSearchForm({ value, loading, onChange, onSubmit, onReset
     <section className="panel profile-panel" aria-label="Расширенный поиск">
       <div className="panel-heading">
         <h2>Расширенный поиск</h2>
-        <span>Фильтры по данным MOEX ISS для точного отбора инструментов</span>
+        <span>Фильтры по рыночным данным для точного отбора инструментов</span>
       </div>
 
       <label className="field">
