@@ -28,7 +28,9 @@
 
 ```text
 moex-select/
+  docker-compose.yml
   backend/
+    Dockerfile
     src/main/java/com/moexdelta/moexselect/
       config/
       controller/
@@ -40,6 +42,7 @@ moex-select/
       service/
     src/test/java/com/moexdelta/moexselect/
   frontend/
+    Dockerfile
     src/
       components/
   docs/
@@ -49,6 +52,37 @@ moex-select/
     iss-integration.md
     analytics-and-success-metrics.md
 ```
+
+## Запуск Через Docker
+
+Самый простой способ запустить проект на любой машине - Docker. Нужен установленный [Docker](https://docs.docker.com/get-docker/) с плагином Compose.
+
+Из корня проекта:
+
+```bash
+docker compose up --build
+```
+
+Команда соберет и запустит два контейнера:
+
+- `moex-select-backend` - REST API на `http://localhost:8000`;
+- `moex-select-frontend` - интерфейс на `http://localhost:5173`.
+
+После старта откройте `http://localhost:5173`. Swagger UI доступен на `http://localhost:8000/swagger-ui.html`.
+
+Остановить и удалить контейнеры:
+
+```bash
+docker compose down
+```
+
+Пересобрать после изменений в коде:
+
+```bash
+docker compose up --build --force-recreate
+```
+
+Порты `5173` и `8000` должны быть свободны на хосте, так как фронтенд обращается к API по адресу `http://localhost:8000`.
 
 ## Запуск На Windows
 

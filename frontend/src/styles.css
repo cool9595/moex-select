@@ -21,7 +21,7 @@ body {
   margin: 0;
   min-width: 320px;
   color: var(--text);
-  background: #f7f7f7;
+  background: transparent;
 }
 
 button,
@@ -662,5 +662,303 @@ select {
 
   .moex-link {
     width: 100%;
+  }
+}
+
+/* ============================================================
+   reactbits-inspired enhancement layer (Delta team)
+   Нативная реализация эффектов reactbits.dev под бело-красную
+   тему MOEX. Только CSS, без внешних зависимостей. Все эффекты
+   аддитивны и отключаются при prefers-reduced-motion.
+   ============================================================ */
+
+/* --- Animated background (аналог Aurora/Silk): мягкие красные блики --- */
+html {
+  /* Базовый светлый фон под слоем Ripple Grid. */
+  background: #f6f7f8;
+}
+
+body {
+  position: relative;
+  background:
+    radial-gradient(1100px 620px at 12% -8%, rgba(227, 6, 19, 0.07), transparent 60%),
+    radial-gradient(960px 560px at 105% 8%, rgba(227, 6, 19, 0.05), transparent 55%),
+    transparent;
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20% -20% auto -20%;
+  height: 75vh;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 60% at 20% 30%, rgba(227, 6, 19, 0.10), transparent 70%),
+    radial-gradient(55% 55% at 80% 20%, rgba(189, 8, 19, 0.08), transparent 70%),
+    radial-gradient(50% 50% at 55% 60%, rgba(255, 120, 130, 0.07), transparent 70%);
+  filter: blur(28px);
+  background-size: 200% 200%;
+  animation: aurora-drift 22s ease-in-out infinite alternate;
+}
+
+/* тонкая зернистость поверх фона для "бумажной" глубины */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes aurora-drift {
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%; }
+  50%  { background-position: 40% 30%, 60% 40%, 40% 60%; }
+  100% { background-position: 100% 50%, 0% 60%, 60% 30%; }
+}
+
+/* --- Hero: shiny/gradient text (аналог Shiny Text) --- */
+.hero h1 {
+  background: linear-gradient(100deg, #161e27 0%, #161e27 38%, var(--accent) 50%, #161e27 62%, #161e27 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: hero-shine 7s linear infinite;
+}
+
+@keyframes hero-shine {
+  0%   { background-position: 180% center; }
+  100% { background-position: -80% center; }
+}
+
+/* акцентная подсветка слева от hero (decorative) */
+.hero {
+  position: relative;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 44px;
+  left: -22px;
+  width: 4px;
+  height: 56px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--accent), transparent);
+  animation: pulse-bar 3.2s ease-in-out infinite;
+}
+
+@keyframes pulse-bar {
+  0%, 100% { opacity: 0.4; transform: scaleY(0.85); }
+  50%      { opacity: 1; transform: scaleY(1); }
+}
+
+/* --- Animated Content: staggered fade-up появление блоков --- */
+.hero,
+.mode-switcher,
+.sidebar > *,
+.results-heading,
+.instrument-card,
+.status-box {
+  animation: fade-up 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mode-switcher { animation-delay: 60ms; }
+.sidebar > *   { animation-delay: 120ms; }
+.results-heading { animation-delay: 90ms; }
+
+/* мягкий каскад для первых карточек в выдаче */
+.instrument-card:nth-child(1) { animation-delay: 110ms; }
+.instrument-card:nth-child(2) { animation-delay: 170ms; }
+.instrument-card:nth-child(3) { animation-delay: 230ms; }
+.instrument-card:nth-child(4) { animation-delay: 290ms; }
+.instrument-card:nth-child(5) { animation-delay: 350ms; }
+.instrument-card:nth-child(6) { animation-delay: 410ms; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Instrument card: tilt + spotlight (аналог Tilt/Spotlight Card) --- */
+.instrument-card {
+  position: relative;
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  overflow: hidden;
+}
+
+.instrument-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(420px circle at var(--spot-x, 50%) var(--spot-y, 0%), rgba(227, 6, 19, 0.07), transparent 45%);
+  transition: opacity 220ms ease;
+}
+
+.instrument-card:hover {
+  border-color: rgba(227, 6, 19, 0.35);
+  box-shadow: 0 14px 34px rgba(31, 41, 51, 0.10), 0 0 0 1px rgba(227, 6, 19, 0.04);
+}
+
+.instrument-card:hover::before {
+  opacity: 1;
+}
+
+/* содержимое карточки над spotlight-слоем */
+.instrument-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* числа в карточке: моноширинные табличные цифры — ровный CountUp */
+.facts-grid dd {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Buttons: shine sweep (аналог Shine/Click Spark) --- */
+.primary-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -130%;
+  width: 60%;
+  height: 100%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transition: left 600ms ease;
+}
+
+.primary-button:hover:not(:disabled)::after {
+  left: 130%;
+}
+
+.primary-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* --- Clear filters button (новая кнопка раздела "Опытный") --- */
+.form-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.form-actions .primary-button {
+  margin-top: 0;
+}
+
+.ghost-button {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: #5b6572;
+  background: #ffffff;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.ghost-button:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: rgba(227, 6, 19, 0.45);
+  background: #fff6f6;
+}
+
+.ghost-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.ghost-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* mode-switcher и moex-link: лёгкий lift при наведении */
+.segmented button:not(.active):hover {
+  color: var(--accent);
+}
+
+.moex-link:hover {
+  box-shadow: 0 6px 18px rgba(227, 6, 19, 0.22);
+}
+
+/* badges: едва заметное появление */
+.asset-badge,
+.detail-badge,
+.fit-badge {
+  transition: transform 160ms ease;
+}
+
+.instrument-card:hover .fit-badge {
+  transform: translateY(-1px);
+}
+
+/* --- Respect reduced motion: всё движение выключается --- */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  .hero h1,
+  .hero::before {
+    animation: none;
+  }
+
+  .hero,
+  .mode-switcher,
+  .sidebar > *,
+  .results-heading,
+  .instrument-card,
+  .status-box {
+    animation: none;
+  }
+
+  .instrument-card {
+    transform: none;
+  }
+
+  .primary-button::after {
+    display: none;
+  }
+
+  .hero h1 {
+    -webkit-text-fill-color: #161e27;
+    background: none;
+  }
+}
+
+/* ============================================================
+   Ripple Grid background (Delta team)
+   Нативный аналог эффекта Ripple Grid с reactbits.dev на Canvas.
+   Фиксированный слой позади всего контента, не перехватывает клики.
+   Светлая бело-красная тема MOEX сохраняется: фон не затемняется,
+   рисуются только полупрозрачные красные линии сетки с рябью.
+   ============================================================ */
+.ripple-grid-bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Канвас сам не анимируется при reduce-motion (статичная сетка). */
+  .ripple-grid-bg {
+    opacity: 0.9;
   }
 }

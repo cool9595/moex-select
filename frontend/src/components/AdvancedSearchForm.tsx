@@ -5,6 +5,7 @@ interface AdvancedSearchFormProps {
   loading: boolean;
   onChange: (value: InstrumentSearchParams) => void;
   onSubmit: () => void;
+  onReset: () => void;
 }
 
 const assetClasses: Array<{ value: AssetClass | ''; label: string }> = [
@@ -32,7 +33,7 @@ function numberOrEmpty(value: string) {
   return value === '' ? '' : Number(value);
 }
 
-export function AdvancedSearchForm({ value, loading, onChange, onSubmit }: AdvancedSearchFormProps) {
+export function AdvancedSearchForm({ value, loading, onChange, onSubmit, onReset }: AdvancedSearchFormProps) {
   const update = <K extends keyof InstrumentSearchParams>(key: K, fieldValue: InstrumentSearchParams[K]) => {
     onChange({ ...value, page: key === 'page' ? Number(fieldValue) : 0, [key]: fieldValue });
   };
@@ -182,9 +183,14 @@ export function AdvancedSearchForm({ value, loading, onChange, onSubmit }: Advan
         </div>
       </div>
 
-      <button className="primary-button" type="button" onClick={onSubmit} disabled={loading}>
-        {loading ? 'Ищем...' : 'Найти инструменты'}
-      </button>
+      <div className="form-actions">
+        <button className="primary-button" type="button" onClick={onSubmit} disabled={loading}>
+          {loading ? 'Ищем...' : 'Найти инструменты'}
+        </button>
+        <button className="ghost-button" type="button" onClick={onReset} disabled={loading}>
+          Очистить фильтры
+        </button>
+      </div>
     </section>
   );
 }

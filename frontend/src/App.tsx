@@ -4,6 +4,7 @@ import { AdvancedSearchForm } from './components/AdvancedSearchForm';
 import { HowItWorks } from './components/HowItWorks';
 import { ProfileForm } from './components/ProfileForm';
 import { ResultsList } from './components/ResultsList';
+import { RippleGridBackground } from './components/RippleGridBackground';
 import { SearchResultsList } from './components/SearchResultsList';
 import type { InstrumentSearchParams, InstrumentSearchResponse, Recommendation, RecommendationRequest } from './types';
 
@@ -64,12 +65,19 @@ function App() {
     }
   };
 
+  const resetSearch = () => {
+    const cleared = { ...initialSearch };
+    setSearchParams(cleared);
+    void runSearch(cleared);
+  };
+
   useEffect(() => {
     void runSearch(initialSearch);
   }, []);
 
   return (
     <main className="app-shell">
+      <RippleGridBackground />
       <header className="site-header">
         <div className="product-mark">MOEX Select</div>
         <div className="header-note">Delta team | Данные рынка: MOEX ISS</div>
@@ -116,6 +124,7 @@ function App() {
                 setSearchParams(nextParams);
                 void runSearch(nextParams);
               }}
+              onReset={resetSearch}
             />
           )}
         </aside>
