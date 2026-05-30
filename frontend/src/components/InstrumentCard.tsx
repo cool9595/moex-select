@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { AssetClass, ConfidenceLevel, DisplayLevel, Instrument, InvestmentScenario, Recommendation } from '../types';
+import type { AssetClass, DisplayLevel, Instrument, InvestmentScenario, Recommendation } from '../types';
 
 const assetClassLabels = {
   STOCK: 'Акция',
@@ -19,12 +19,6 @@ const liquidityLabels = {
   LOW: 'низкая',
   MEDIUM: 'средняя',
   HIGH: 'высокая',
-};
-
-const confidenceLabels: Record<ConfidenceLevel, string> = {
-  HIGH: 'Высокая полнота данных',
-  MEDIUM: 'Средняя полнота данных',
-  LOW: 'Ограниченный набор данных',
 };
 
 const scenarioLabels: Record<InvestmentScenario, string> = {
@@ -243,11 +237,6 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
         <span className={`detail-badge risk-${riskLevel.toLowerCase()}`}>Риск: {riskLabels[riskLevel]}</span>
         <span className="detail-badge">Ликвидность: {liquidityLabels[liquidity]}</span>
         {'scenario' in instrument && <span className="detail-badge scenario-badge">{scenarioLabels[instrument.scenario]}</span>}
-        {'confidenceLevel' in instrument && (
-          <span className={`detail-badge confidence-${instrument.confidenceLevel.toLowerCase()}`}>
-            {confidenceLabels[instrument.confidenceLevel]}
-          </span>
-        )}
         {profileMatch && <span className="fit-badge">Подходит под профиль</span>}
       </div>
 
@@ -266,14 +255,13 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
         </dl>
       )}
 
-      <div className="explanation-block">
-        {'summary' in instrument && <h4>Почему попал в подборку</h4>}
+      {!('summary' in instrument) && (
         <ul className="explain-list">
           {explanations(instrument, variant).map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
-      </div>
+      )}
 
       {warnings(instrument).length > 0 && (
         <div className="warning-list">

@@ -129,8 +129,7 @@ public class ExplanationGenerationService {
         var second = reasons.isEmpty()
             ? "Ранжирование учитывает выбранные параметры пользователя и доступные данные MOEX ISS."
             : String.join(" ", reasons);
-        var third = "Полнота данных для подбора: " + confidenceLabel(confidenceLevel).toLowerCase(Locale.ROOT) + ".";
-        return trimToLimit(first + " " + second + " " + third);
+        return trimToLimit(first + " " + second);
     }
 
     private String systemPrompt() {
@@ -221,14 +220,6 @@ public class ExplanationGenerationService {
             case CAPITAL_GROWTH -> "роста капитала";
             case SHORT_TERM_LIQUIDITY -> "краткосрочной ликвидности";
             case SPECULATION -> "спекулятивных идей";
-        };
-    }
-
-    private String confidenceLabel(ConfidenceLevel confidenceLevel) {
-        return switch (confidenceLevel) {
-            case HIGH -> "высокая";
-            case MEDIUM -> "средняя";
-            case LOW -> "ограниченная";
         };
     }
 
