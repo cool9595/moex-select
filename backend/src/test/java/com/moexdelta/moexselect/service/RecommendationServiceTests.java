@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import com.moexdelta.moexselect.data.ReserveInstrumentCatalog;
 import com.moexdelta.moexselect.dto.RecommendationRequest;
@@ -21,8 +22,13 @@ import com.moexdelta.moexselect.model.Instrument;
 class RecommendationServiceTests {
 
     private final ScoringService scoringService = new ScoringService();
-    private final RecommendationService service =
-        new RecommendationService(scoringService, new ExplanationService(scoringService));
+    private final ExplanationService explanationService = new ExplanationService(scoringService);
+    private final RecommendationService service = new RecommendationService(
+        scoringService,
+        explanationService,
+        new ExplanationGenerationService(WebClient.builder(), explanationService, false, "mock", "mock", "http://localhost:11434"),
+        new ScenarioDetectionService()
+    );
 
     @Test
     void createsPublicRecommendationsWithoutInternalScores() {
@@ -32,6 +38,8 @@ class RecommendationServiceTests {
         assertThat(response.recommendations()).isNotEmpty();
         assertThat(response.recommendations()).allMatch(item -> item.moexUrl().contains(item.ticker()));
         assertThat(response.recommendations()).allMatch(item -> !item.explanation().isEmpty());
+        assertThat(response.recommendations()).allMatch(item -> item.summary() != null && !item.summary().isBlank());
+        assertThat(response.recommendations()).allMatch(item -> item.confidenceLevel() != null);
         assertThat(response.recommendations()).allMatch(item -> item.internalScores() == null);
     }
 
@@ -41,6 +49,7 @@ class RecommendationServiceTests {
 
         assertThat(response.recommendations()).allMatch(item -> item.internalScores() != null);
         assertThat(response.recommendations()).allMatch(item -> item.internalScores().finalScore() >= 0);
+        assertThat(response.recommendations()).allMatch(item -> item.internalScores().horizonScore() >= 0);
     }
 
     @Test
@@ -64,7 +73,7 @@ class RecommendationServiceTests {
     @Test
     void explainsMatchingBondHorizon() {
         var longBond = new Instrument(
-            "LONG", "Длинная облигация", AssetClass.BOND, 100d, "RUB", 14d,
+            "LONG", "Long bond", AssetClass.BOND, 100d, "RUB", 14d,
             100_000d, 10_000_000d, 8d, "AAA", LocalDate.now().plusYears(5).toString(), "TQOB",
             null, null, null, Map.of()
         );

@@ -3,6 +3,13 @@ export type Goal = 'CAPITAL_PRESERVATION' | 'STABLE_INCOME' | 'CAPITAL_GROWTH' |
 export type RiskProfile = 'LOW' | 'MEDIUM' | 'HIGH';
 export type Horizon = 'SHORT' | 'MEDIUM' | 'LONG';
 export type DisplayLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export type ConfidenceLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export type InvestmentScenario =
+  | 'CAPITAL_PRESERVATION'
+  | 'STABLE_INCOME'
+  | 'CAPITAL_GROWTH'
+  | 'SHORT_TERM_LIQUIDITY'
+  | 'SPECULATION';
 export type SortBy =
   | 'ticker'
   | 'name'
@@ -35,6 +42,9 @@ export interface Recommendation {
   currency?: string | null;
   riskLevel: DisplayLevel;
   liquidityLevel: DisplayLevel;
+  confidenceLevel: ConfidenceLevel;
+  scenario: InvestmentScenario;
+  summary: string;
   profileMatch: boolean;
   yieldValue?: number | null;
   maturityDate?: string | null;

@@ -458,6 +458,44 @@ select {
   background: #fff1f2;
 }
 
+.scenario-badge {
+  color: #1f4f75;
+  background: #edf6ff;
+}
+
+.confidence-high {
+  color: #256044;
+  background: #eaf6ef;
+}
+
+.confidence-medium {
+  color: #5c4a13;
+  background: #fff8d8;
+}
+
+.confidence-low {
+  color: #8a3b12;
+  background: #fff0e8;
+}
+
+.recommendation-summary {
+  margin: -4px 0 18px;
+  padding: 13px 14px;
+  border-left: 3px solid var(--accent);
+  border-radius: 5px;
+  color: #27313d;
+  background: #fff7f8;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.explanation-block h4 {
+  margin: 0 0 8px;
+  color: #202934;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .facts-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(125px, 1fr));

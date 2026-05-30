@@ -6,6 +6,8 @@ public record InternalScores(
     double yieldScore,
     double riskScore,
     double creditQualityScore,
-    double fitScore
+    double fitScore,
+    double horizonScore,
+    double penalty
 ) {
 }

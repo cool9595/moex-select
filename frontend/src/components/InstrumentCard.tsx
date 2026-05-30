@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { AssetClass, DisplayLevel, Instrument, Recommendation } from '../types';
+import type { AssetClass, ConfidenceLevel, DisplayLevel, Instrument, InvestmentScenario, Recommendation } from '../types';
 
 const assetClassLabels = {
   STOCK: 'Акция',
@@ -21,6 +21,20 @@ const liquidityLabels = {
   HIGH: 'высокая',
 };
 
+const confidenceLabels: Record<ConfidenceLevel, string> = {
+  HIGH: 'Высокая полнота данных',
+  MEDIUM: 'Средняя полнота данных',
+  LOW: 'Ограниченный набор данных',
+};
+
+const scenarioLabels: Record<InvestmentScenario, string> = {
+  CAPITAL_PRESERVATION: 'Сохранение капитала',
+  STABLE_INCOME: 'Стабильный доход',
+  CAPITAL_GROWTH: 'Рост капитала',
+  SHORT_TERM_LIQUIDITY: 'Краткосрочная ликвидность',
+  SPECULATION: 'Спекулятивные идеи',
+};
+
 interface InstrumentCardProps {
   instrument: Recommendation | Instrument;
   variant?: 'recommendation' | 'search';
@@ -30,8 +44,6 @@ function prefersReducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-// CountUp: число "набегает" к финальному значению при появлении карточки.
-// Аналог reactbits CountUp, реализован нативно без внешних зависимостей.
 function CountUp({ value, suffix = '' }: { value: number; suffix?: string }) {
   const [display, setDisplay] = useState(prefersReducedMotion() ? value : 0);
   const ref = useRef<HTMLSpanElement | null>(null);
@@ -135,8 +147,6 @@ function warnings(instrument: Recommendation | Instrument) {
     : [];
 }
 
-// Числовой факт карточки. Возвращаем null, если значения нет —
-// тогда факт вообще не отображается (вместо прочерка "—").
 type Fact = { label: string; node: ReactNode };
 
 function numericFact(label: string, value: number | null | undefined, suffix = ''): Fact | null {
@@ -153,7 +163,6 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
   const liquidity = liquidityLevel(instrument);
   const profileMatch = 'profileMatch' in instrument ? instrument.profileMatch : false;
 
-  // Лёгкий tilt + перемещение блика за курсором (аналог reactbits Spotlight/Tilt).
   const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
     if (prefersReducedMotion()) {
       return;
@@ -165,8 +174,8 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
     const rect = node.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    const rotateY = ((x / rect.width) - 0.5) * 5;
-    const rotateX = ((y / rect.height) - 0.5) * -5;
+    const rotateY = (x / rect.width - 0.5) * 5;
+    const rotateX = (y / rect.height - 0.5) * -5;
     node.style.setProperty('--tilt-x', `${rotateX}deg`);
     node.style.setProperty('--tilt-y', `${rotateY}deg`);
     node.style.setProperty('--spot-x', `${x}px`);
@@ -182,7 +191,6 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
     node.style.setProperty('--tilt-y', '0deg');
   };
 
-  // Собираем только заполненные факты. Пустые не добавляются и не рисуются.
   const facts: Fact[] = [];
   if (instrument.price != null) {
     facts.push({
@@ -223,7 +231,9 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
         <div>
           <div className="ticker-line">
             <h3>{instrument.ticker}</h3>
-            <span className={`asset-badge ${instrument.assetClass.toLowerCase()}`}>{assetClassLabels[instrument.assetClass]}</span>
+            <span className={`asset-badge ${instrument.assetClass.toLowerCase()}`}>
+              {assetClassLabels[instrument.assetClass]}
+            </span>
           </div>
           <p className="instrument-name">{instrument.name}</p>
         </div>
@@ -232,8 +242,18 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
       <div className="badge-row">
         <span className={`detail-badge risk-${riskLevel.toLowerCase()}`}>Риск: {riskLabels[riskLevel]}</span>
         <span className="detail-badge">Ликвидность: {liquidityLabels[liquidity]}</span>
+        {'scenario' in instrument && <span className="detail-badge scenario-badge">{scenarioLabels[instrument.scenario]}</span>}
+        {'confidenceLevel' in instrument && (
+          <span className={`detail-badge confidence-${instrument.confidenceLevel.toLowerCase()}`}>
+            {confidenceLabels[instrument.confidenceLevel]}
+          </span>
+        )}
         {profileMatch && <span className="fit-badge">Подходит под профиль</span>}
       </div>
+
+      {'summary' in instrument && instrument.summary && (
+        <p className="recommendation-summary">{instrument.summary}</p>
+      )}
 
       {facts.length > 0 && (
         <dl className="facts-grid">
@@ -246,11 +266,14 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
         </dl>
       )}
 
-      <ul className="explain-list">
-        {explanations(instrument, variant).map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
+      <div className="explanation-block">
+        {'summary' in instrument && <h4>Почему попал в подборку</h4>}
+        <ul className="explain-list">
+          {explanations(instrument, variant).map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
 
       {warnings(instrument).length > 0 && (
         <div className="warning-list">

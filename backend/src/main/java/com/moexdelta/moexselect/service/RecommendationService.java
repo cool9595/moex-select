@@ -25,10 +25,19 @@ public class RecommendationService {
 
     private final ScoringService scoringService;
     private final ExplanationService explanationService;
+    private final ExplanationGenerationService explanationGenerationService;
+    private final ScenarioDetectionService scenarioDetectionService;
 
-    public RecommendationService(ScoringService scoringService, ExplanationService explanationService) {
+    public RecommendationService(
+        ScoringService scoringService,
+        ExplanationService explanationService,
+        ExplanationGenerationService explanationGenerationService,
+        ScenarioDetectionService scenarioDetectionService
+    ) {
         this.scoringService = scoringService;
         this.explanationService = explanationService;
+        this.explanationGenerationService = explanationGenerationService;
+        this.scenarioDetectionService = scenarioDetectionService;
     }
 
     public RecommendationResponse recommend(
@@ -37,10 +46,11 @@ public class RecommendationService {
         boolean debug
     ) {
         var profile = detectUserProfile(request);
+        var scenario = scenarioDetectionService.detect(request);
         var recommendations = instruments.stream()
             .filter(instrument -> request.assetClasses().contains(instrument.assetClass()))
             .filter(instrument -> shouldKeepInstrument(instrument, request))
-            .map(instrument -> rankInstrument(instrument, request, profile, debug))
+            .map(instrument -> rankInstrument(instrument, request, profile, scenario, debug))
             .sorted(Comparator.comparingDouble(RankedInstrument::rank).reversed())
             .limit(request.limit())
             .map(RankedInstrument::recommendation)
@@ -69,9 +79,23 @@ public class RecommendationService {
         Instrument instrument,
         RecommendationRequest request,
         UserProfileType profile,
+        com.moexdelta.moexselect.enums.InvestmentScenario scenario,
         boolean debug
     ) {
-        var scores = scoringService.calculate(instrument, request, profile);
+        var scores = scoringService.calculate(instrument, request, profile, scenario);
+        var confidenceLevel = scoringService.confidenceLevel(instrument);
+        var reasonCodes = explanationService.reasonCodes(instrument, request, scores, scenario, confidenceLevel);
+        var warnings = explanationService.warnings(instrument);
+        var explanations = explanationService.explanations(instrument, request, scores, scenario, confidenceLevel);
+        var summary = explanationGenerationService.generateSummary(
+            instrument,
+            request,
+            scenario,
+            confidenceLevel,
+            reasonCodes,
+            warnings,
+            scores
+        );
         var publicRecommendation = new PublicInstrumentRecommendation(
             instrument.ticker(),
             instrument.name(),
@@ -82,9 +106,12 @@ public class RecommendationService {
             instrument.maturityDate(),
             scoringService.impliedRisk(instrument),
             scoringService.liquidityLevel(scores.liquidityScore()),
+            confidenceLevel,
+            scenario,
+            summary,
             scores.fitScore() > 80,
-            explanationService.explanations(instrument, request, scores),
-            explanationService.warnings(instrument),
+            explanations,
+            warnings,
             moexUrl(instrument),
             debug ? scores : null
         );

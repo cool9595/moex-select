@@ -170,3 +170,40 @@ finalScore =
 Обычный `POST /api/recommendations` возвращает карточки без `internalScores`. Именно этот режим использует React-приложение.
 
 Запрос `POST /api/recommendations?debug=true` добавляет `internalScores` к карточке для проверки формул и порядка выдачи командой. Этот режим не вызывается пользовательским интерфейсом.
+
+## 9. Scenario ranking and summaries
+
+Recommendation engine remains a rule-based and scoring-based system. It does not use a language model to select instruments, change ranking, predict returns, or create missing facts.
+
+The request is mapped to an internal `InvestmentScenario`: `CAPITAL_PRESERVATION`, `STABLE_INCOME`, `CAPITAL_GROWTH`, `SHORT_TERM_LIQUIDITY`, or `SPECULATION`.
+
+The scenario changes ranking weights. `SHORT_TERM_LIQUIDITY` gives more weight to liquidity and horizon fit, while `STABLE_INCOME` gives more weight to yield and credit quality. A separate `horizonScore` compares maturity or expected holding period with the selected horizon.
+
+After scenario scoring, the backend applies penalties for low liquidity, missing data, risk mismatch, low credit quality, and complex instruments for beginners. These values are internal and are not shown in the user interface.
+
+Each public recommendation includes `scenario`, `confidenceLevel`, `summary`, human-readable explanations, warnings, and the MOEX URL. `confidenceLevel` means data completeness for the recommendation, not confidence in return.
+
+## 10. Local explanation generation
+
+`ExplanationGenerationService` creates the `summary` field. By default it uses deterministic templates. Optional local language generation can be enabled only for explanation text:
+
+```powershell
+$env:LLM_EXPLANATIONS_ENABLED="true"
+$env:LLM_PROVIDER="ollama"
+$env:LLM_MODEL="llama3.1:8b"
+$env:LLM_BASE_URL="http://localhost:11434"
+```
+
+The local generator uses Ollama endpoint `POST /api/generate` with a 3 second timeout. If Ollama is unavailable, times out, returns an empty answer, exceeds the length limit, or produces prohibited investment-advice phrases, the backend falls back to templates.
+
+Ollama setup is manual:
+
+```bash
+ollama pull llama3.1:8b
+```
+
+For weaker laptops:
+
+```bash
+ollama pull llama3.2:3b
+```
