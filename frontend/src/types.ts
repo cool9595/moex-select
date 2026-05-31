@@ -44,11 +44,11 @@ export interface Recommendation {
   liquidityLevel: DisplayLevel;
   confidenceLevel: ConfidenceLevel;
   scenario: InvestmentScenario;
-  summary: string;
+  summary?: string | null;
   profileMatch: boolean;
   yieldValue?: number | null;
   maturityDate?: string | null;
-  explanation: string[];
+  explanation?: string[];
   warnings: string[];
   moexUrl: string;
 }
@@ -56,6 +56,7 @@ export interface Recommendation {
 export interface RecommendationResponse {
   userProfile: 'CONSERVATIVE' | 'BALANCED' | 'AGGRESSIVE' | 'PROFESSIONAL';
   disclaimer: string;
+  profileSummary: string;
   recommendations: Recommendation[];
 }
 

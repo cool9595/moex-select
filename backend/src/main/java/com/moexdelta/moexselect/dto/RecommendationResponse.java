@@ -7,6 +7,7 @@ import com.moexdelta.moexselect.enums.UserProfileType;
 public record RecommendationResponse(
     UserProfileType userProfile,
     String disclaimer,
+    String profileSummary,
     List<PublicInstrumentRecommendation> recommendations
 ) {
 }

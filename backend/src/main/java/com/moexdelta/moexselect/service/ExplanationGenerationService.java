@@ -9,32 +9,32 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import com.moexdelta.moexselect.dto.InternalScores;
 import com.moexdelta.moexselect.dto.RecommendationRequest;
-import com.moexdelta.moexselect.enums.ConfidenceLevel;
+import com.moexdelta.moexselect.enums.AssetClass;
+import com.moexdelta.moexselect.enums.Goal;
+import com.moexdelta.moexselect.enums.Horizon;
 import com.moexdelta.moexselect.enums.InvestmentScenario;
-import com.moexdelta.moexselect.enums.ReasonCode;
-import com.moexdelta.moexselect.model.Instrument;
+import com.moexdelta.moexselect.enums.RiskProfile;
+import com.moexdelta.moexselect.enums.UserProfileType;
 
 @Service
 public class ExplanationGenerationService {
 
-    private static final int MAX_LENGTH = 450;
+    private static final int MAX_LENGTH = 520;
     private static final List<String> FORBIDDEN_PHRASES = List.of(
         "купите",
         "продавайте",
         "гарантированно",
         "точно вырастет",
         "лучший инструмент",
-        "советуем купить",
+        "рекомендуем",
+        "советуем",
         "инвестиционная рекомендация",
         "покуп",
-        "продаж",
-        "совет"
+        "продаж"
     );
 
     private final WebClient.Builder webClientBuilder;
-    private final ExplanationService explanationService;
     private final boolean llmEnabled;
     private final String llmProvider;
     private final String llmModel;
@@ -48,10 +48,9 @@ public class ExplanationGenerationService {
         @Value("${LLM_PROVIDER:ollama}") String llmProvider,
         @Value("${LLM_MODEL:qwen2.5:3b-instruct}") String llmModel,
         @Value("${LLM_BASE_URL:http://localhost:11434}") String llmBaseUrl,
-        @Value("${LLM_TIMEOUT_SECONDS:12}") int llmTimeoutSeconds
+        @Value("${LLM_TIMEOUT_SECONDS:8}") int llmTimeoutSeconds
     ) {
         this.webClientBuilder = webClientBuilder;
-        this.explanationService = explanationService;
         this.llmEnabled = llmEnabled;
         this.llmProvider = llmProvider;
         this.llmModel = llmModel;
@@ -59,20 +58,16 @@ public class ExplanationGenerationService {
         this.llmTimeoutSeconds = Math.max(1, llmTimeoutSeconds);
     }
 
-    public String generateSummary(
-        Instrument instrument,
+    public String generateProfileSummary(
         RecommendationRequest request,
+        UserProfileType profile,
         InvestmentScenario scenario,
-        ConfidenceLevel confidenceLevel,
-        List<ReasonCode> reasonCodes,
-        List<String> warnings,
-        InternalScores scores,
-        boolean allowLlm
+        int instrumentsCount
     ) {
-        if (llmEnabled && allowLlm) {
+        if (llmEnabled) {
             var llmSummary = switch (llmProvider.toLowerCase(Locale.ROOT)) {
-                case "mock" -> mockSummary(instrument, scenario, reasonCodes);
-                case "ollama" -> ollamaSummary(instrument, request, scenario, reasonCodes, warnings, scores);
+                case "mock" -> profileTemplate(request, profile, scenario);
+                case "ollama" -> ollamaProfileSummary(request, profile, scenario, instrumentsCount);
                 default -> null;
             };
             llmSummary = sanitize(llmSummary);
@@ -80,16 +75,14 @@ public class ExplanationGenerationService {
                 return trimToLimit(llmSummary.strip());
             }
         }
-        return templateSummary(instrument, scenario, reasonCodes);
+        return profileTemplate(request, profile, scenario);
     }
 
-    private String ollamaSummary(
-        Instrument instrument,
+    private String ollamaProfileSummary(
         RecommendationRequest request,
+        UserProfileType profile,
         InvestmentScenario scenario,
-        List<ReasonCode> reasonCodes,
-        List<String> warnings,
-        InternalScores scores
+        int instrumentsCount
     ) {
         try {
             var client = webClientBuilder.baseUrl(llmBaseUrl).build();
@@ -97,11 +90,12 @@ public class ExplanationGenerationService {
                 .uri("/api/generate")
                 .bodyValue(Map.of(
                     "model", llmModel,
-                    "prompt", prompt(instrument, request, scenario, reasonCodes, warnings, scores),
+                    "prompt", profilePrompt(request, profile, scenario, instrumentsCount),
                     "stream", false,
                     "options", Map.of(
-                        "temperature", 0.15,
-                        "num_predict", 45
+                        "temperature", 0.35,
+                        "num_predict", 95,
+                        "num_ctx", 768
                     )
                 ))
                 .retrieve()
@@ -114,71 +108,92 @@ public class ExplanationGenerationService {
         }
     }
 
-    private String mockSummary(
-        Instrument instrument,
-        InvestmentScenario scenario,
-        List<ReasonCode> reasonCodes
-    ) {
-        return templateSummary(instrument, scenario, reasonCodes);
-    }
-
-    private String templateSummary(
-        Instrument instrument,
-        InvestmentScenario scenario,
-        List<ReasonCode> reasonCodes
-    ) {
-        var reasons = reasonCodes.stream()
-            .limit(2)
-            .map(explanationService::textFor)
-            .toList();
-        var first = "Инструмент " + instrument.ticker() + " попал в подборку по сценарию "
-            + scenarioLabel(scenario).toLowerCase(Locale.ROOT) + ".";
-        var second = reasons.isEmpty()
-            ? "Ранжирование учитывает выбранные параметры пользователя и доступные рыночные данные."
-            : String.join(" ", reasons);
-        return trimToLimit(first + " " + second);
-    }
-
-    private String prompt(
-        Instrument instrument,
+    private String profilePrompt(
         RecommendationRequest request,
+        UserProfileType profile,
         InvestmentScenario scenario,
-        List<ReasonCode> reasonCodes,
-        List<String> warnings,
-        InternalScores scores
+        int instrumentsCount
     ) {
-        var reasons = reasonCodes.stream()
-            .limit(3)
-            .map(explanationService::textFor)
-            .toList();
         return """
-            Напиши одно короткое пояснение на русском для карточки MOEX Select.
-            Это не инвестиционная рекомендация. Не используй слова: купить, покупать, продать, продавать, совет.
-            Не обещай доходность и не делай прогнозов. Не раскрывай числовые score.
+            Ты работаешь в составе сервиса MOEX Select.
+            Кратко опиши инвестиционный профиль пользователя на основе анкеты.
 
-            Инструмент: %s, %s, %s.
-            Сценарий: %s. Риск пользователя: %s. Горизонт: %s.
-            Причины: %s.
-            Предупреждения: %s.
+            Не перечисляй параметры напрямую.
+            Не повторяй слова пользователя буквально.
+            Не пиши "вы выбрали".
+            Интерпретируй смысл параметров и опиши инвестиционный стиль.
+            Без инвестиционных советов, прогнозов и обещаний доходности.
+            Не используй слова: купите, продавайте, гарантированно, точно вырастет, лучший инструмент, рекомендуем.
+            Верни только итоговый текст без заголовков.
+            Язык: русский. Длина: 2-3 коротких предложения.
 
-            Ответь одним нейтральным предложением.
+            Хорошие примеры:
+            Сформирован профиль инвестора, ориентированного на сохранение капитала и получение стабильного денежного потока. Приоритет отдается более предсказуемым инструментам и долгосрочному подходу к управлению средствами.
+            Подбор ориентирован на долгосрочное увеличение стоимости капитала при умеренном уровне риска. Основное внимание уделяется инструментам, способным поддерживать устойчивую динамику на продолжительном временном горизонте.
+            Сформирован агрессивный инвестиционный профиль, ориентированный на поиск краткосрочных рыночных возможностей. Основное внимание уделяется инструментам, быстро реагирующим на изменения рыночной конъюнктуры.
+
+            Входные данные:
+            investmentGoal=%s
+            riskProfile=%s
+            investmentHorizon=%s
+            userProfile=%s
+            scenario=%s
+            budgetBand=%s
+            selectedAssetClasses=%s
+            matchedInstruments=%d
             """.formatted(
-            instrument.ticker(),
-            instrument.name(),
-            instrument.assetClass(),
+            goalLabel(request.goal()),
+            riskLabel(request.riskProfile()),
+            horizonLabel(request.horizon()),
+            profileLabel(profile),
             scenarioLabel(scenario),
-            request.riskProfile(),
-            request.horizon(),
-            reasons,
-            warnings
+            budgetBand(request.budget()),
+            assetClassLabels(request.assetClasses()),
+            instrumentsCount
         );
+    }
+
+    private String profileTemplate(
+        RecommendationRequest request,
+        UserProfileType profile,
+        InvestmentScenario scenario
+    ) {
+        if (scenario == InvestmentScenario.STABLE_INCOME || request.goal() == Goal.STABLE_INCOME) {
+            if (request.riskProfile() == RiskProfile.LOW) {
+                return "Сформирован профиль инвестора, ориентированного на устойчивый денежный поток и аккуратное управление капиталом. Приоритет отдается более предсказуемым инструментам и снижению влияния резких рыночных колебаний.";
+            }
+            return "Профиль отражает стремление к регулярному доходу при готовности принимать умеренные рыночные колебания. Основной акцент сделан на инструментах, где важны понятная структура выплат и достаточная ликвидность.";
+        }
+        if (scenario == InvestmentScenario.CAPITAL_PRESERVATION || request.goal() == Goal.CAPITAL_PRESERVATION) {
+            return "Сформирован осторожный профиль, в котором ключевую роль играет сохранность капитала. Подбор ориентирован на инструменты с более предсказуемым поведением и меньшей чувствительностью к резким изменениям рынка.";
+        }
+        if (scenario == InvestmentScenario.SPECULATION || request.goal() == Goal.SPECULATION) {
+            if (request.assetClasses().stream().anyMatch(assetClass -> assetClass == AssetClass.FUTURE || assetClass == AssetClass.OPTION)) {
+                return "Сформирован агрессивный профиль, ориентированный на краткосрочные рыночные возможности и высокую динамику цены. Такой стиль предполагает повышенное внимание к ликвидности, волатильности и скорости изменения рыночной ситуации.";
+            }
+            return "Профиль отражает поиск активных рыночных идей с повышенной чувствительностью к краткосрочным движениям цены. В таком подходе особенно важны ликвидность инструмента и готовность к заметным колебаниям стоимости.";
+        }
+        if (request.goal() == Goal.CAPITAL_GROWTH && request.riskProfile() == RiskProfile.MEDIUM && request.horizon() == Horizon.LONG) {
+            return "Подбор ориентирован на долгосрочное увеличение стоимости капитала при умеренном уровне риска. Основное внимание уделяется инструментам, способным поддерживать устойчивую динамику на продолжительном временном горизонте.";
+        }
+        if (request.goal() == Goal.CAPITAL_GROWTH && request.riskProfile() == RiskProfile.HIGH) {
+            return "Сформирован профиль роста с готовностью к выраженным рыночным колебаниям. Акцент смещен в сторону инструментов с более высокой динамикой цены и потенциалом активного изменения стоимости.";
+        }
+        if (profile == UserProfileType.CONSERVATIVE) {
+            return "Сформирован консервативный профиль, где важны стабильность, понятная структура инструмента и контроль риска. Такой подход делает акцент на предсказуемости поведения портфеля и постепенном движении к цели.";
+        }
+        return "Сформирован сбалансированный профиль, сочетающий стремление к росту капитала и контроль рыночного риска. Подбор ориентирован на инструменты, которые могут сохранять устойчивость без чрезмерной концентрации на одном типе риска.";
     }
 
     private boolean isSafe(String value) {
         if (value == null || value.isBlank() || value.length() > MAX_LENGTH) {
             return false;
         }
-        var normalized = value.toLowerCase(Locale.ROOT);
+        var stripped = value.strip();
+        if (!stripped.endsWith(".") && !stripped.endsWith("!") && !stripped.endsWith("?")) {
+            return false;
+        }
+        var normalized = stripped.toLowerCase(Locale.ROOT);
         return FORBIDDEN_PHRASES.stream().noneMatch(normalized::contains);
     }
 
@@ -188,7 +203,9 @@ public class ExplanationGenerationService {
         }
         return value
             .replace("предлагает доходность", "имеет показатели доходности")
-            .replace("предлагает более привлекательную доходность", "имеет более привлекательные показатели доходности");
+            .replace("предлагает более привлекательную доходность", "имеет более привлекательные показатели доходности")
+            .replace("\"", "")
+            .strip();
     }
 
     private String trimToLimit(String value) {
@@ -197,12 +214,68 @@ public class ExplanationGenerationService {
 
     private String scenarioLabel(InvestmentScenario scenario) {
         return switch (scenario) {
-            case CAPITAL_PRESERVATION -> "сохранения капитала";
-            case STABLE_INCOME -> "стабильного дохода";
-            case CAPITAL_GROWTH -> "роста капитала";
-            case SHORT_TERM_LIQUIDITY -> "краткосрочной ликвидности";
-            case SPECULATION -> "спекулятивных идей";
+            case CAPITAL_PRESERVATION -> "сохранение капитала";
+            case STABLE_INCOME -> "стабильный доход";
+            case CAPITAL_GROWTH -> "рост капитала";
+            case SHORT_TERM_LIQUIDITY -> "краткосрочная ликвидность";
+            case SPECULATION -> "спекулятивные идеи";
         };
+    }
+
+    private String profileLabel(UserProfileType profile) {
+        return switch (profile) {
+            case CONSERVATIVE -> "консервативный";
+            case BALANCED -> "сбалансированный";
+            case AGGRESSIVE -> "агрессивный";
+            case PROFESSIONAL -> "профессиональный";
+        };
+    }
+
+    private String goalLabel(Goal goal) {
+        return switch (goal) {
+            case CAPITAL_PRESERVATION -> "сохранение капитала";
+            case STABLE_INCOME -> "стабильный доход";
+            case CAPITAL_GROWTH -> "рост капитала";
+            case SPECULATION -> "поиск краткосрочных рыночных возможностей";
+        };
+    }
+
+    private String riskLabel(RiskProfile riskProfile) {
+        return switch (riskProfile) {
+            case LOW -> "низкий";
+            case MEDIUM -> "средний";
+            case HIGH -> "высокий";
+        };
+    }
+
+    private String horizonLabel(Horizon horizon) {
+        return switch (horizon) {
+            case SHORT -> "краткосрочный";
+            case MEDIUM -> "среднесрочный";
+            case LONG -> "долгосрочный";
+        };
+    }
+
+    private String budgetBand(double budget) {
+        if (budget < 50_000) {
+            return "небольшой";
+        }
+        if (budget < 500_000) {
+            return "средний";
+        }
+        return "крупный";
+    }
+
+    private String assetClassLabels(List<AssetClass> assetClasses) {
+        return assetClasses.stream()
+            .map(assetClass -> switch (assetClass) {
+                case STOCK -> "акции";
+                case BOND -> "облигации";
+                case FUTURE -> "фьючерсы";
+                case OPTION -> "опционы";
+            })
+            .toList()
+            .toString();
     }
 
     private record OllamaGenerateResponse(String response) {

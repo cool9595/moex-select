@@ -5,13 +5,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.moexdelta.moexselect.dto.InternalScores;
 import com.moexdelta.moexselect.dto.PublicInstrumentRecommendation;
 import com.moexdelta.moexselect.dto.RecommendationRequest;
 import com.moexdelta.moexselect.dto.RecommendationResponse;
-import com.moexdelta.moexselect.dto.InternalScores;
 import com.moexdelta.moexselect.enums.AssetClass;
 import com.moexdelta.moexselect.enums.Experience;
 import com.moexdelta.moexselect.enums.Goal;
@@ -24,26 +23,23 @@ import com.moexdelta.moexselect.model.Instrument;
 public class RecommendationService {
 
     public static final String DISCLAIMER = "Информация не является индивидуальной инвестиционной рекомендацией. "
-        + "Подбор основан на выбранных пользователем параметрах и открытых рыночных данных MOEX ISS.";
+        + "Подбор основан на выбранных пользователем параметрах и открытых рыночных данных.";
 
     private final ScoringService scoringService;
     private final ExplanationService explanationService;
     private final ExplanationGenerationService explanationGenerationService;
     private final ScenarioDetectionService scenarioDetectionService;
-    private final int llmMaxSummaries;
 
     public RecommendationService(
         ScoringService scoringService,
         ExplanationService explanationService,
         ExplanationGenerationService explanationGenerationService,
-        ScenarioDetectionService scenarioDetectionService,
-        @Value("${LLM_MAX_SUMMARIES:1}") int llmMaxSummaries
+        ScenarioDetectionService scenarioDetectionService
     ) {
         this.scoringService = scoringService;
         this.explanationService = explanationService;
         this.explanationGenerationService = explanationGenerationService;
         this.scenarioDetectionService = scenarioDetectionService;
-        this.llmMaxSummaries = Math.max(0, llmMaxSummaries);
     }
 
     public RecommendationResponse recommend(
@@ -59,16 +55,15 @@ public class RecommendationService {
             .map(instrument -> rankInstrument(instrument, request, profile, scenario))
             .sorted(Comparator.comparingDouble(RankedCandidate::rank).reversed())
             .limit(request.limit())
-            .map(new java.util.function.Function<RankedCandidate, PublicInstrumentRecommendation>() {
-                private int index;
-
-                @Override
-                public PublicInstrumentRecommendation apply(RankedCandidate candidate) {
-                    return toRecommendation(candidate, request, scenario, debug, index++ < llmMaxSummaries);
-                }
-            })
+            .map(candidate -> toRecommendation(candidate, request, scenario, debug))
             .toList();
-        return new RecommendationResponse(profile, DISCLAIMER, recommendations);
+        var profileSummary = explanationGenerationService.generateProfileSummary(
+            request,
+            profile,
+            scenario,
+            recommendations.size()
+        );
+        return new RecommendationResponse(profile, DISCLAIMER, profileSummary, recommendations);
     }
 
     public UserProfileType detectUserProfile(RecommendationRequest request) {
@@ -102,26 +97,13 @@ public class RecommendationService {
         RankedCandidate candidate,
         RecommendationRequest request,
         InvestmentScenario scenario,
-        boolean debug,
-        boolean allowLlm
+        boolean debug
     ) {
         var instrument = candidate.instrument();
         var scores = candidate.scores();
         var confidenceLevel = scoringService.confidenceLevel(instrument);
-        var reasonCodes = explanationService.reasonCodes(instrument, request, scores, scenario, confidenceLevel);
         var warnings = explanationService.warnings(instrument);
-        var explanations = explanationService.explanations(instrument, request, scores, scenario, confidenceLevel);
-        var summary = explanationGenerationService.generateSummary(
-            instrument,
-            request,
-            scenario,
-            confidenceLevel,
-            reasonCodes,
-            warnings,
-            scores,
-            allowLlm
-        );
-        var publicRecommendation = new PublicInstrumentRecommendation(
+        return new PublicInstrumentRecommendation(
             instrument.ticker(),
             instrument.name(),
             instrument.assetClass(),
@@ -133,14 +115,13 @@ public class RecommendationService {
             scoringService.liquidityLevel(scores.liquidityScore()),
             confidenceLevel,
             scenario,
-            summary,
+            null,
             scores.fitScore() > 80,
-            explanations,
+            List.of(),
             warnings,
             moexUrl(instrument),
             debug ? scores : null
         );
-        return publicRecommendation;
     }
 
     private boolean shouldKeepInstrument(Instrument instrument, RecommendationRequest request) {

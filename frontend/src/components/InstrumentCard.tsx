@@ -118,20 +118,6 @@ function liquidityLevel(instrument: Recommendation | Instrument): DisplayLevel {
   return 'LOW';
 }
 
-function explanations(instrument: Recommendation | Instrument, variant: InstrumentCardProps['variant']) {
-  if ('explanation' in instrument) {
-    return instrument.explanation;
-  }
-  const result = [
-    'Инструмент найден по открытым рыночным данным.',
-    `Класс инструмента: ${assetClassLabels[instrument.assetClass].toLowerCase()}.`,
-  ];
-  if (variant === 'search') {
-    result.push('Параметры карточки приведены к единому виду для сравнения.');
-  }
-  return result;
-}
-
 function warnings(instrument: Recommendation | Instrument) {
   if ('warnings' in instrument) {
     return instrument.warnings;
@@ -150,7 +136,7 @@ function numericFact(label: string, value: number | null | undefined, suffix = '
   return { label, node: <CountUp value={value} suffix={suffix} /> };
 }
 
-export function InstrumentCard({ instrument, variant = 'recommendation' }: InstrumentCardProps) {
+export function InstrumentCard({ instrument }: InstrumentCardProps) {
   const cardRef = useRef<HTMLElement | null>(null);
   const maturity = formatMaturityDate(instrument.maturityDate);
   const riskLevel = 'riskLevel' in instrument ? instrument.riskLevel : impliedRisk(instrument.assetClass);
@@ -240,10 +226,6 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
         {profileMatch && <span className="fit-badge">Подходит под профиль</span>}
       </div>
 
-      {'summary' in instrument && instrument.summary && (
-        <p className="recommendation-summary">{instrument.summary}</p>
-      )}
-
       {facts.length > 0 && (
         <dl className="facts-grid">
           {facts.map((fact) => (
@@ -253,14 +235,6 @@ export function InstrumentCard({ instrument, variant = 'recommendation' }: Instr
             </div>
           ))}
         </dl>
-      )}
-
-      {!('summary' in instrument) && (
-        <ul className="explain-list">
-          {explanations(instrument, variant).map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
       )}
 
       {warnings(instrument).length > 0 && (

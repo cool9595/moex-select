@@ -29,6 +29,7 @@ const initialSearch: InstrumentSearchParams = {
 function App() {
   const [mode, setMode] = useState<'beginner' | 'advanced'>('advanced');
   const [profile, setProfile] = useState<RecommendationRequest>(initialProfile);
+  const [profileSummary, setProfileSummary] = useState('');
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
@@ -40,10 +41,12 @@ function App() {
   const submit = async () => {
     setRecommendationLoading(true);
     setRecommendationError(null);
+    setProfileSummary('');
 
     try {
       const response = await getRecommendations(profile);
       setRecommendations(response.recommendations);
+      setProfileSummary(response.profileSummary);
     } catch (apiError) {
       setRecommendationError(apiError instanceof Error ? apiError.message : 'Не удалось загрузить инструменты');
     } finally {
@@ -130,7 +133,12 @@ function App() {
         </aside>
 
         {mode === 'beginner' ? (
-          <ResultsList recommendations={recommendations} loading={recommendationLoading} error={recommendationError} />
+          <ResultsList
+            recommendations={recommendations}
+            profileSummary={profileSummary}
+            loading={recommendationLoading}
+            error={recommendationError}
+          />
         ) : (
           <SearchResultsList
             response={searchResponse}

@@ -3,15 +3,16 @@ import { InstrumentCard } from './InstrumentCard';
 
 interface ResultsListProps {
   recommendations: Recommendation[];
+  profileSummary: string;
   loading: boolean;
   error: string | null;
 }
 
-export function ResultsList({ recommendations, loading, error }: ResultsListProps) {
+export function ResultsList({ recommendations, profileSummary, loading, error }: ResultsListProps) {
   if (loading) {
     return (
       <section className="panel results-panel">
-        <div className="status-box">Загружаем подходящие инструменты...</div>
+        <div className="status-box">Подбираем инструменты...</div>
       </section>
     );
   }
@@ -41,6 +42,14 @@ export function ResultsList({ recommendations, loading, error }: ResultsListProp
         </div>
         <span>{recommendations.length} инструментов</span>
       </div>
+
+      {profileSummary && (
+        <div className="profile-insight">
+          <span>Инвестиционный профиль</span>
+          <p>{profileSummary}</p>
+        </div>
+      )}
+
       {recommendations.map((instrument) => (
         <InstrumentCard key={`${instrument.assetClass}-${instrument.ticker}`} instrument={instrument} />
       ))}

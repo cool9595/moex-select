@@ -27,8 +27,7 @@ class RecommendationServiceTests {
         scoringService,
         explanationService,
         new ExplanationGenerationService(WebClient.builder(), explanationService, false, "mock", "mock", "http://localhost:11434", 1),
-        new ScenarioDetectionService(),
-        2
+        new ScenarioDetectionService()
     );
 
     @Test
@@ -36,10 +35,11 @@ class RecommendationServiceTests {
         var response = service.recommend(ReserveInstrumentCatalog.INSTRUMENTS, standardRequest(), false);
 
         assertThat(response.userProfile()).isEqualTo(UserProfileType.BALANCED);
+        assertThat(response.profileSummary()).isNotBlank();
         assertThat(response.recommendations()).isNotEmpty();
         assertThat(response.recommendations()).allMatch(item -> item.moexUrl().contains(item.ticker()));
-        assertThat(response.recommendations()).allMatch(item -> !item.explanation().isEmpty());
-        assertThat(response.recommendations()).allMatch(item -> item.summary() != null && !item.summary().isBlank());
+        assertThat(response.recommendations()).allMatch(item -> item.explanation().isEmpty());
+        assertThat(response.recommendations()).allMatch(item -> item.summary() == null);
         assertThat(response.recommendations()).allMatch(item -> item.confidenceLevel() != null);
         assertThat(response.recommendations()).allMatch(item -> item.internalScores() == null);
     }
@@ -72,7 +72,7 @@ class RecommendationServiceTests {
     }
 
     @Test
-    void explainsMatchingBondHorizon() {
+    void createsSingleProfileSummaryForBeginnerRequest() {
         var longBond = new Instrument(
             "LONG", "Long bond", AssetClass.BOND, 100d, "RUB", 14d,
             100_000d, 10_000_000d, 8d, "AAA", LocalDate.now().plusYears(5).toString(), "TQOB",
@@ -90,8 +90,9 @@ class RecommendationServiceTests {
 
         var response = service.recommend(List.of(longBond), request, false);
 
-        assertThat(response.recommendations().get(0).explanation())
-            .contains("Подходит под выбранный горизонт инвестирования.");
+        assertThat(response.profileSummary()).isNotBlank();
+        assertThat(response.recommendations().get(0).summary()).isNull();
+        assertThat(response.recommendations().get(0).explanation()).isEmpty();
     }
 
     private RecommendationRequest standardRequest() {
