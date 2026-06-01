@@ -118,15 +118,6 @@ function liquidityLevel(instrument: Recommendation | Instrument): DisplayLevel {
   return 'LOW';
 }
 
-function warnings(instrument: Recommendation | Instrument) {
-  if ('warnings' in instrument) {
-    return instrument.warnings;
-  }
-  return instrument.assetClass === 'FUTURE' || instrument.assetClass === 'OPTION'
-    ? ['Инструмент относится к сложным финансовым инструментам и подходит только пользователям с соответствующим опытом.']
-    : [];
-}
-
 type Fact = { label: string; node: ReactNode };
 
 function numericFact(label: string, value: number | null | undefined, suffix = ''): Fact | null {
@@ -235,14 +226,6 @@ export function InstrumentCard({ instrument }: InstrumentCardProps) {
             </div>
           ))}
         </dl>
-      )}
-
-      {warnings(instrument).length > 0 && (
-        <div className="warning-list">
-          {warnings(instrument).map((warning) => (
-            <p key={warning}>{warning}</p>
-          ))}
-        </div>
       )}
 
       <a className="moex-link" href={instrument.moexUrl} target="_blank" rel="noreferrer">

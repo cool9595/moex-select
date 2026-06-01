@@ -6,7 +6,7 @@ import { ProfileForm } from './components/ProfileForm';
 import { ResultsList } from './components/ResultsList';
 import { RippleGridBackground } from './components/RippleGridBackground';
 import { SearchResultsList } from './components/SearchResultsList';
-import type { InstrumentSearchParams, InstrumentSearchResponse, Recommendation, RecommendationRequest } from './types';
+import type { BeginnerSort, InstrumentSearchParams, InstrumentSearchResponse, Recommendation, RecommendationRequest } from './types';
 
 const initialProfile: RecommendationRequest = {
   goal: 'CAPITAL_GROWTH',
@@ -29,6 +29,7 @@ const initialSearch: InstrumentSearchParams = {
 function App() {
   const [mode, setMode] = useState<'beginner' | 'advanced'>('advanced');
   const [profile, setProfile] = useState<RecommendationRequest>(initialProfile);
+  const [beginnerSort, setBeginnerSort] = useState<BeginnerSort>('ticker-asc');
   const [profileSummary, setProfileSummary] = useState('');
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [recommendationLoading, setRecommendationLoading] = useState(false);
@@ -114,7 +115,14 @@ function App() {
         <aside className="sidebar">
           {mode === 'beginner' ? (
             <>
-              <ProfileForm value={profile} loading={recommendationLoading} onChange={setProfile} onSubmit={submit} />
+              <ProfileForm
+                value={profile}
+                loading={recommendationLoading}
+                sort={beginnerSort}
+                onChange={setProfile}
+                onSortChange={setBeginnerSort}
+                onSubmit={submit}
+              />
               <HowItWorks />
             </>
           ) : (
@@ -138,6 +146,7 @@ function App() {
             profileSummary={profileSummary}
             loading={recommendationLoading}
             error={recommendationError}
+            sort={beginnerSort}
           />
         ) : (
           <SearchResultsList

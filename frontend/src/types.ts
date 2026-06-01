@@ -23,6 +23,7 @@ export type SortBy =
   | 'marketCap'
   | 'strikePrice';
 export type SortDirection = 'asc' | 'desc';
+export type BeginnerSort = 'ticker-asc' | 'ticker-desc' | 'price-asc' | 'price-desc';
 
 export interface RecommendationRequest {
   goal: Goal;

@@ -1,11 +1,20 @@
-import type { AssetClass, Goal, Horizon, RecommendationRequest, RiskProfile } from '../types';
+import type { AssetClass, BeginnerSort, Goal, Horizon, RecommendationRequest, RiskProfile } from '../types';
 
 interface ProfileFormProps {
   value: RecommendationRequest;
   loading: boolean;
+  sort: BeginnerSort;
   onChange: (value: RecommendationRequest) => void;
+  onSortChange: (value: BeginnerSort) => void;
   onSubmit: () => void;
 }
+
+const sortOptions: Array<{ value: BeginnerSort; label: string }> = [
+  { value: 'ticker-asc', label: 'Тикер (по возрастанию)' },
+  { value: 'ticker-desc', label: 'Тикер (по убыванию)' },
+  { value: 'price-asc', label: 'Цена (по возрастанию)' },
+  { value: 'price-desc', label: 'Цена (по убыванию)' },
+];
 
 const goals: Array<{ value: Goal; label: string }> = [
   { value: 'CAPITAL_PRESERVATION', label: 'Сохранить капитал' },
@@ -33,7 +42,7 @@ const assetClasses: Array<{ value: AssetClass; label: string }> = [
   { value: 'OPTION', label: 'Опционы' },
 ];
 
-export function ProfileForm({ value, loading, onChange, onSubmit }: ProfileFormProps) {
+export function ProfileForm({ value, loading, sort, onChange, onSortChange, onSubmit }: ProfileFormProps) {
   const update = <K extends keyof RecommendationRequest>(key: K, fieldValue: RecommendationRequest[K]) => {
     onChange({ ...value, [key]: fieldValue });
   };
@@ -111,6 +120,17 @@ export function ProfileForm({ value, loading, onChange, onSubmit }: ProfileFormP
           ))}
         </div>
       </div>
+
+      <label className="field">
+        <span>Сортировка</span>
+        <select value={sort} onChange={(event) => onSortChange(event.target.value as BeginnerSort)}>
+          {sortOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <button className="primary-button" type="button" onClick={onSubmit} disabled={loading}>
         {loading ? 'Подбираем...' : 'Подобрать инструменты'}

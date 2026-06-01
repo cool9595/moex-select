@@ -1,4 +1,5 @@
-import type { Recommendation } from '../types';
+import { useMemo } from 'react';
+import type { BeginnerSort, Recommendation } from '../types';
 import { InstrumentCard } from './InstrumentCard';
 
 interface ResultsListProps {
@@ -6,9 +7,39 @@ interface ResultsListProps {
   profileSummary: string;
   loading: boolean;
   error: string | null;
+  sort: BeginnerSort;
 }
 
-export function ResultsList({ recommendations, profileSummary, loading, error }: ResultsListProps) {
+function sortRecommendations(recommendations: Recommendation[], sort: BeginnerSort): Recommendation[] {
+  const sortByPrice = sort === 'price-asc' || sort === 'price-desc';
+  const factor = sort === 'ticker-asc' || sort === 'price-asc' ? 1 : -1;
+
+  return [...recommendations].sort((a, b) => {
+    if (sortByPrice) {
+      const priceA = a.price ?? null;
+      const priceB = b.price ?? null;
+      if (priceA == null && priceB == null) {
+        return 0;
+      }
+      if (priceA == null) {
+        return 1;
+      }
+      if (priceB == null) {
+        return -1;
+      }
+      return (priceA - priceB) * factor;
+    }
+
+    return a.ticker.localeCompare(b.ticker, 'ru') * factor;
+  });
+}
+
+export function ResultsList({ recommendations, profileSummary, loading, error, sort }: ResultsListProps) {
+  const sortedRecommendations = useMemo(
+    () => sortRecommendations(recommendations, sort),
+    [recommendations, sort],
+  );
+
   if (loading) {
     return (
       <section className="panel results-panel">
@@ -50,7 +81,7 @@ export function ResultsList({ recommendations, profileSummary, loading, error }:
         </div>
       )}
 
-      {recommendations.map((instrument) => (
+      {sortedRecommendations.map((instrument) => (
         <InstrumentCard key={`${instrument.assetClass}-${instrument.ticker}`} instrument={instrument} />
       ))}
     </section>
