@@ -1,6 +1,6 @@
 import type { InstrumentSearchParams, InstrumentSearchResponse, RecommendationRequest, RecommendationResponse } from './types';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://45.144.178.175:8000/api';
 
 async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
