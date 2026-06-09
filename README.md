@@ -1,30 +1,45 @@
 # MOEX Select
 
-**MOEX Select** - сервис команды **Delta team** для понятного подбора финансовых инструментов Московской Биржи по параметрам частного инвестора.
+**MOEX Select** - сервис команды **Delta team** для подбора и поиска финансовых инструментов Московской Биржи по параметрам частного инвестора.
 
-**Слоган:** Человекоориентированный слой подбора финансовых инструментов поверх MOEX ISS.
+Проект объединяет frontend на React/Vite и backend на Spring Boot. Backend получает открытые рыночные данные из MOEX ISS, нормализует разные классы инструментов в единую модель, применяет rule-based ранжирование и возвращает понятные карточки акций, облигаций, фьючерсов и опционов.
 
-Сервис получает открытые рыночные данные через MOEX ISS, нормализует различающиеся поля рынков, применяет объяснимое rule-based ранжирование и показывает карточки акций, облигаций, фьючерсов и опционов с причинами попадания в подборку и ссылками на сайт Московской Биржи.
+> Информация не является индивидуальной инвестиционной рекомендацией. Подбор основан на выбранных пользователем параметрах и открытых рыночных данных.
 
-> Информация не является индивидуальной инвестиционной рекомендацией. Подбор основан на выбранных пользователем параметрах и открытых рыночных данных MOEX ISS.
+## Демо
+
+Опубликованная версия доступна по адресу:
+
+```text
+http://45.144.178.175:5173/
+```
+
+Backend API на сервере ожидается по адресу:
+
+```text
+http://45.144.178.175:8000/api
+```
 
 ## Возможности
 
-- Анкета с целью инвестирования, уровнем риска, горизонтом, суммой, опытом и классами инструментов.
-- Данные акций, облигаций, фьючерсов и опционов из MOEX ISS с резервным каталогом при временной недоступности источника.
-- Публичная выдача с ценой, валютой, доходностью и сроком погашения при наличии данных.
-- Понятные уровни риска и ликвидности, причины подбора и сообщения для сложных инструментов.
-- Переход к выбранному инструменту на сайте MOEX.
-- Внутренние оценки релевантности только для сортировки; пользовательский интерфейс их не показывает.
+- Два режима интерфейса: `Новичок` для анкетного подбора и `Опытный` для расширенного поиска.
+- Подбор по цели, риск-профилю, горизонту, бюджету, опыту и выбранным классам инструментов.
+- Расширенный поиск по тикеру или названию с фильтрами по цене, доходности, объему, обороту, волатильности, сроку погашения, капитализации, типу опциона и strike price.
+- Пагинация и сортировка по ключевым рыночным показателям.
+- Единые карточки инструментов с ценой, валютой, доходностью, датой погашения, уровнем риска, ликвидностью, уровнем уверенности и ссылкой на MOEX.
+- Предупреждения для сложных инструментов, включая фьючерсы и опционы.
+- Резервный каталог инструментов на случай временной недоступности MOEX ISS.
+- Диагностический режим API с внутренними оценками ранжирования для проверки методики.
 
 ## Технологии
 
-- Backend: Java 21, Spring Boot 3, Spring Web, WebClient, Spring Validation, springdoc OpenAPI.
-- Frontend: React, Vite, TypeScript, CSS.
-- Источник рыночных данных: MOEX ISS API.
-- Хранение данных: in-memory cache на пять минут и встроенный резервный каталог.
+- **Backend:** Java 21, Spring Boot 3.5, Spring Web, WebClient, Spring Validation, springdoc OpenAPI.
+- **Frontend:** React 19, Vite 6, TypeScript, CSS.
+- **Данные:** MOEX ISS API.
+- **Хранение:** in-memory cache на 5 минут и встроенный резервный каталог.
+- **Инфраструктура:** Docker и Docker Compose.
 
-## Структура
+## Структура проекта
 
 ```text
 moex-select/
@@ -40,22 +55,21 @@ moex-select/
       exception/
       model/
       service/
-    src/test/java/com/moexdelta/moexselect/
   frontend/
     Dockerfile
     src/
       components/
   docs/
+    api-contract.md
+    analytics-and-success-metrics.md
+    iss-integration.md
     project-requirements.md
     recommendation-engine.md
-    api-contract.md
-    iss-integration.md
-    analytics-and-success-metrics.md
 ```
 
-## Запуск Через Docker
+## Быстрый запуск через Docker
 
-Самый простой способ запустить проект на любой машине - Docker. Нужен установленный [Docker](https://docs.docker.com/get-docker/) с плагином Compose.
+Требуется установленный Docker с Compose.
 
 Из корня проекта:
 
@@ -63,39 +77,85 @@ moex-select/
 docker compose up --build
 ```
 
-Команда соберет и запустит два контейнера:
+Будут запущены два контейнера:
 
 - `moex-select-backend` - REST API на `http://localhost:8000`;
 - `moex-select-frontend` - интерфейс на `http://localhost:5173`.
 
-После старта откройте `http://localhost:5173`. Swagger UI доступен на `http://localhost:8000/swagger-ui.html`.
+После старта откройте:
 
-Остановить и удалить контейнеры:
+```text
+http://localhost:5173
+```
+
+Swagger UI доступен на:
+
+```text
+http://localhost:8000/swagger-ui.html
+```
+
+Остановить контейнеры:
 
 ```bash
 docker compose down
 ```
 
-Пересобрать после изменений в коде:
+Пересобрать после изменений:
 
 ```bash
 docker compose up --build --force-recreate
 ```
 
-Порты `5173` и `8000` должны быть свободны на хосте, так как фронтенд обращается к API по адресу `http://localhost:8000`.
+## Запуск на сервере
 
-## Запуск На Windows
+При запуске на сервере frontend должен знать публичный адрес backend API. Для текущего сервера можно создать файл `.env` в корне проекта:
+
+```env
+VITE_API_URL=http://45.144.178.175:8000/api
+```
+
+Затем запустить:
+
+```bash
+docker compose up --build -d
+```
+
+Проверка после запуска:
+
+```bash
+docker compose ps
+curl http://45.144.178.175:8000/api/health
+```
+
+Ожидаемый ответ healthcheck:
+
+```json
+{
+  "status": "ok",
+  "service": "MOEX Select API"
+}
+```
+
+В `CorsConfig` уже разрешены origins:
+
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+- `http://45.144.178.175:5173`
+
+Если адрес сервера изменится, нужно обновить `VITE_API_URL` и список разрешенных origins в backend.
+
+## Локальный запуск без Docker
 
 Требуются JDK 21+ и Node.js LTS.
 
-Откройте первый PowerShell для backend:
+Backend:
 
 ```powershell
 cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
-Откройте второй PowerShell для frontend:
+Frontend:
 
 ```powershell
 cd frontend
@@ -105,18 +165,16 @@ npm.cmd run dev
 
 После запуска:
 
-- Интерфейс: `http://localhost:5173`
+- интерфейс: `http://localhost:5173`
 - REST API: `http://localhost:8000/api`
 - Swagger UI: `http://localhost:8000/swagger-ui.html`
 
-## Запуск На Linux/macOS
+Для Linux/macOS команды аналогичны:
 
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
-
-В другом терминале:
 
 ```bash
 cd frontend
@@ -124,22 +182,40 @@ npm install
 npm run dev
 ```
 
-## REST API
+## Основные API endpoints
 
-`GET /api/health`
+### GET `/api/health`
 
-```json
-{
-  "status": "ok",
-  "service": "MOEX Select API"
-}
+Проверка состояния backend.
+
+### GET `/api/instruments`
+
+Возвращает пагинированный каталог инструментов.
+
+Пример:
+
+```http
+GET /api/instruments?assetClass=STOCK&query=sber&limit=6&page=0&sortBy=turnover&sortDirection=desc
 ```
 
-`GET /api/instruments?assetClass=STOCK&query=sber&limit=6&page=0&sortBy=turnover&sortDirection=desc`
+Основные query-параметры:
 
-Возвращает пагинированный каталог инструментов с частичным поиском по тикеру/названию, сортировкой и расширенными фильтрами. Поддерживаются `page`, `limit`, `sortBy`, `sortDirection`, диапазоны цены, доходности, объема, оборота, волатильности, сроков погашения, капитализации, типа опциона и strike price. Дополнительный запрос `GET /api/instruments/{ticker}` возвращает один инструмент.
+- `assetClass`: `STOCK`, `BOND`, `FUTURE`, `OPTION`
+- `query`: часть тикера или названия
+- `limit`, `page`
+- `sortBy`: `ticker`, `name`, `price`, `yield`, `volume`, `turnover`, `liquidity`, `maturity`, `volatility`, `marketCap`, `strikePrice`
+- `sortDirection`: `asc`, `desc`
+- диапазоны: `minPrice`, `maxPrice`, `minYield`, `maxYield`, `minVolume`, `maxVolume`, `minTurnover`, `maxTurnover`, `minVolatility`, `maxVolatility`, `maturityFrom`, `maturityTo`, `minMarketCap`, `maxMarketCap`, `optionType`, `minStrikePrice`, `maxStrikePrice`
 
-`POST /api/recommendations`
+### GET `/api/instruments/{ticker}`
+
+Возвращает один инструмент по тикеру. Если инструмент не найден, backend возвращает `404`.
+
+### POST `/api/recommendations`
+
+Возвращает подборку инструментов под профиль пользователя.
+
+Пример тела запроса:
 
 ```json
 {
@@ -153,65 +229,46 @@ npm run dev
 }
 ```
 
-Публичный ответ содержит профиль, disclaimer и карточки без числовых внутренних оценок:
+Поддерживается диагностический режим:
 
-```json
-{
-  "userProfile": "BALANCED",
-  "disclaimer": "Информация не является индивидуальной инвестиционной рекомендацией. Подбор основан на выбранных пользователем параметрах и открытых рыночных данных MOEX ISS.",
-  "recommendations": [
-    {
-      "ticker": "SBER",
-      "name": "Сбербанк",
-      "assetClass": "STOCK",
-      "price": 315.4,
-      "currency": "RUB",
-      "riskLevel": "MEDIUM",
-      "liquidityLevel": "HIGH",
-      "profileMatch": true,
-      "explanation": ["Соответствует выбранному уровню риска."],
-      "warnings": [],
-      "moexUrl": "https://www.moex.com/ru/issue.aspx?board=TQBR&code=SBER"
-    }
-  ]
-}
+```http
+POST /api/recommendations?debug=true
 ```
 
-Для валидации методики команда может вызвать `POST /api/recommendations?debug=true`. Только этот запрос добавляет к карточкам объект `internalScores`; frontend его не использует.
+Он добавляет к карточкам поле `internalScores`. Публичный frontend эти оценки не показывает.
 
 ## MOEX ISS
 
-Приложение запрашивает:
+Backend запрашивает открытые данные MOEX ISS по классам:
 
-- Акции: `https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off`
-- Облигации: `https://iss.moex.com/iss/engines/stock/markets/bonds/securities.json?iss.meta=off`
-- Фьючерсы: `https://iss.moex.com/iss/engines/futures/markets/forts/securities.json?iss.meta=off`
-- Опционы: `https://iss.moex.com/iss/engines/futures/markets/options/securities.json?iss.meta=off`
+- акции: `stock/shares`
+- облигации: `stock/bonds`
+- фьючерсы: `futures/forts`
+- опционы: `futures/options`
 
-MOEX ISS возвращает табличные блоки `columns` и `data`. `MoexIssClient` преобразует строки в карты, `InstrumentNormalizationService` объединяет сведения по `SECID` и приводит поля рынков к единой модели `Instrument`.
+`MoexIssClient` читает табличные блоки `columns` и `data`, `InstrumentNormalizationService` приводит рынки к единой модели `Instrument`, а `InstrumentService` кэширует результат и подставляет резервные данные при сбоях источника.
 
 ## Документация
 
-- [Требования и архитектура](docs/project-requirements.md)
-- [Recommendation engine](docs/recommendation-engine.md)
 - [API contract](docs/api-contract.md)
 - [ISS integration](docs/iss-integration.md)
+- [Recommendation engine](docs/recommendation-engine.md)
+- [Требования и архитектура](docs/project-requirements.md)
 - [Метрики продукта](docs/analytics-and-success-metrics.md)
+- [Правила командной разработки](CONTRIBUTING.md)
 
 ## Проверка
 
-Backend:
+Backend tests:
 
 ```powershell
 cd backend
 .\mvnw.cmd test
 ```
 
-Frontend:
+Frontend build:
 
 ```powershell
 cd frontend
 npm.cmd run build
 ```
-
-Правила командной разработки описаны в [CONTRIBUTING.md](CONTRIBUTING.md).
